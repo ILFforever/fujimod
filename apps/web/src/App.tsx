@@ -14,6 +14,7 @@ const ReleasePersonalNotePreview = import.meta.env.DEV
   ? lazy(() => import('./development/release-personal-note'))
   : undefined;
 const SdkDocs = lazy(() => import('./docs/Page'));
+const FluidKitCompare = lazy(() => import('./docs/FluidKitCompare'));
 const Manual = lazy(() => import('./docs/Manual'));
 const DocsOverview = lazy(() => import('./docs/Overview'));
 const textRoutes = {
@@ -49,6 +50,8 @@ export default function App() {
           ? Device
           : path === '/docs/' || path === '/docs'
             ? DocsOverview
+            : path.startsWith('/docs/fluid-kit/')
+            ? FluidKitCompare
             : path.startsWith('/docs/sdk/')
             ? SdkDocs
             : isManualPath(path)
