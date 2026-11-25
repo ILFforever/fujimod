@@ -4960,6 +4960,7 @@ mod layout_tests {
             write_mask: None,
             access: RegisterAccess::ReadWrite,
             fields: vec![],
+            reads: None,
         }
     }
 
