@@ -168,10 +168,23 @@ impl Timer {
     fn schedule(&self, cx: &mut Cx<'_>, channel: usize) {
         let c = &self.counters[channel];
         if c.enabled {
+            let now = Duration::from_nanos(cx.now());
+            let mut deadline = c.deadline(now);
+            // EXPERIMENT (local fast mode, FUJIMOD_COMPANION_TICK_DIVIDER=k): a
+            // companion-routed reload channel with a period under 200 us (the
+            // IBIS servo tick) fires k times less often. Not hardware behavior.
+            if channel >= 8
+                && self.companion_cpu.is_some()
+                && deadline.saturating_sub(now) < Duration::from_micros(200)
+                && let Some(k) = std::env::var("FUJIMOD_COMPANION_TICK_DIVIDER")
+                    .ok()
+                    .and_then(|v| v.parse::<u32>().ok())
+                    .filter(|&k| k > 1)
+            {
+                deadline = now + deadline.saturating_sub(now) * k;
+            }
             cx.schedule(
-                (c.deadline(Duration::from_nanos(cx.now())))
-                    .as_nanos()
-                    .min(u64::MAX as u128) as u64,
+                deadline.as_nanos().min(u64::MAX as u128) as u64,
                 (c.generation << 4) | channel as u64,
             );
         }

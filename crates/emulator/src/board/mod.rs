@@ -4179,7 +4179,9 @@ unsafe fn written(
                     }
                     state.code_run = RunCode::Unknown;
                 }
-                if state.execution_policy == ExecutionPolicy::Exact {
+                // Ported from the X-H2 board branch (c92e94f5): a store keeps the
+                // code-page copy under either policy; the slice runs alone.
+                {
                     let code_shadow_active = state.code_shadow[b.core].is_some();
                     if diagnostic_m4 && code_shadow_active {
                         if let Some(counters) = state
