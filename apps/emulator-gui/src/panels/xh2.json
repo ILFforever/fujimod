@@ -1,0 +1,256 @@
+{
+  "schema": 1,
+  "body": "xh2",
+  "layout": [
+    {
+      "kind": "grid",
+      "className": "xh2-top",
+      "children": [
+        {
+          "kind": "control",
+          "id": "mode_dial",
+          "variant": "dial",
+          "caption": "MODE",
+          "className": "a-mode",
+          "labels": {
+            "P": "P",
+            "S": "S",
+            "A": "A",
+            "M": "M",
+            "C1": "C1",
+            "C2": "C2",
+            "C3": "C3",
+            "C4": "C4",
+            "C5": "C5",
+            "C6": "C6",
+            "C7": "C7",
+            "FILTER": "FILTER",
+            "F": "F"
+          }
+        },
+        {
+          "kind": "space",
+          "className": "a-tlcd xh2-blank"
+        },
+        {
+          "kind": "control",
+          "id": "iso_button",
+          "variant": "key",
+          "className": "a-iso",
+          "face": [
+            "ISO"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "wb_button",
+          "variant": "key",
+          "className": "a-wb",
+          "face": [
+            "WB"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "fn1_button",
+          "variant": "key",
+          "className": "a-fn1",
+          "face": [
+            "Fn1"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "movie_recording_button",
+          "variant": "key",
+          "className": "a-rec",
+          "icon": "record"
+        },
+        {
+          "kind": "control",
+          "id": "shutter_button",
+          "variant": "shutter",
+          "caption": "SHUTTER",
+          "className": "a-shutter"
+        },
+        {
+          "kind": "command",
+          "caption": "FRONT DIAL",
+          "className": "a-front",
+          "bindings": {
+            "left": "front_command_dial.decrease",
+            "right": "front_command_dial.increase"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "divider"
+    },
+    {
+      "kind": "grid",
+      "className": "xh2-rear",
+      "children": [
+        {
+          "kind": "control",
+          "id": "drive_delete_button",
+          "variant": "key",
+          "className": "a-drive",
+          "face": [
+            "DRIVE"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "playback_button",
+          "variant": "key",
+          "className": "a-play",
+          "icon": "playback"
+        },
+        {
+          "kind": "space",
+          "className": "a-evf xh2-blank"
+        },
+        {
+          "kind": "control",
+          "id": "view_mode_button",
+          "variant": "key",
+          "className": "a-view",
+          "face": [
+            "VIEW",
+            "MODE"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "secondary_monitor_backlight_button",
+          "variant": "key",
+          "className": "a-light",
+          "face": [
+            "LIGHT"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "afon_button",
+          "variant": "key",
+          "className": "a-afon",
+          "face": [
+            "AF-ON"
+          ]
+        },
+        {
+          "kind": "command",
+          "caption": "REAR DIAL",
+          "className": "a-dial",
+          "bindings": {
+            "left": "rear_command_dial.decrease",
+            "right": "rear_command_dial.increase"
+          }
+        },
+        {
+          "kind": "space",
+          "className": "a-lcd xh2-blank"
+        },
+        {
+          "kind": "dpad",
+          "className": "a-stick",
+          "caption": "FOCUS",
+          "bindings": {
+            "up": "focus_stick.up",
+            "down": "focus_stick.down",
+            "left": "focus_stick.left",
+            "right": "focus_stick.right"
+          }
+        },
+        {
+          "kind": "control",
+          "id": "ael_button",
+          "variant": "key",
+          "className": "a-ael",
+          "face": [
+            "AEL"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "q_button",
+          "variant": "key",
+          "className": "a-q",
+          "face": [
+            "Q"
+          ]
+        },
+        {
+          "kind": "dpad",
+          "className": "a-pad",
+          "face": [
+            "MENU",
+            "OK"
+          ],
+          "bindings": {
+            "up": "selector_up_button",
+            "down": "selector_down_button",
+            "left": "selector_left_button",
+            "right": "selector_right_button",
+            "center": "menu_ok_button"
+          }
+        },
+        {
+          "kind": "control",
+          "id": "disp_back_button",
+          "variant": "key",
+          "className": "a-disp",
+          "face": [
+            "DISP",
+            "BACK"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "divider"
+    },
+    {
+      "kind": "grid",
+      "className": "xh2-front",
+      "children": [
+        {
+          "kind": "control",
+          "id": "fn2_button",
+          "variant": "key",
+          "className": "a-fn2",
+          "face": [
+            "Fn2"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "fn3_button",
+          "variant": "key",
+          "className": "a-fn3",
+          "face": [
+            "Fn3"
+          ]
+        },
+        {
+          "kind": "control",
+          "id": "lens_release_button",
+          "variant": "key",
+          "className": "a-lens",
+          "caption": "LENS"
+        },
+        {
+          "kind": "control",
+          "id": "bluetooth_button",
+          "variant": "key",
+          "className": "a-bt",
+          "face": [
+            "BT"
+          ]
+        }
+      ]
+    }
+  ],
+  "combos": []
+}

@@ -704,7 +704,7 @@ function Node(props: {
         <hr />
       </Match>
       <Match when={props.node.kind === 'space'}>
-        <div class="sp" />
+        <div class={`sp ${props.node.className ?? ''}`} />
       </Match>
       <Match
         when={
@@ -714,7 +714,7 @@ function Node(props: {
         }
       >
         <div
-          class="control-cluster"
+          class={`control-cluster ${props.node.className ?? ''}`}
           data-layout-path={layoutPath()}
           data-layout-selected={selected()}
         >

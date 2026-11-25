@@ -64,3 +64,35 @@ select, .file-row { width: 100%; border: 1px solid #3a3a3c; border-radius: 10px;
 }
 .launcher .launcher-check { display: flex; align-items: center; gap: 9px; color: #f2f2f7; font-size: 13px; cursor: pointer; }
 .launcher-check input { margin: 0; accent-color: #f2f2f7; }
+
+/* X-H2 hand panel: controls placed as on the body, from the owner's
+   manual "Parts of the Camera" diagram (pages 2-3). Dark boxes are the EVF,
+   rear LCD and top LCD, for orientation only. */
+.xh2-top, .xh2-rear, .xh2-front { display: grid; gap: 8px 6px; align-items: center; justify-items: center; }
+.xh2-top {
+  grid-template-columns: 1.4fr 1fr 0.7fr 0.7fr 0.7fr;
+  grid-template-areas:
+    "mode tlcd iso wb fn1"
+    "mode tlcd rec shutter shutter"
+    ". . front front front";
+}
+.xh2-rear {
+  grid-template-columns: 0.7fr 0.7fr 1fr 0.8fr 1fr 0.8fr;
+  grid-template-areas:
+    "drive play evf view light afon"
+    "lcd lcd lcd stick stick dial"
+    "lcd lcd lcd ael pad q"
+    "lcd lcd lcd . pad ."
+    "lcd lcd lcd . disp .";
+}
+.xh2-front { grid-template-columns: repeat(4, 1fr); grid-template-areas: "fn2 fn3 lens bt"; }
+.xh2-blank { width: 100%; height: 100%; min-height: 28px; border-radius: 6px; background: #0c0c0e; box-shadow: inset 0 0 0 1px #2a2a2e; }
+.a-lcd { min-height: 150px; }
+.a-evf { min-height: 34px; }
+.a-tlcd { min-height: 60px; }
+.a-mode { grid-area: mode; } .a-tlcd { grid-area: tlcd; } .a-iso { grid-area: iso; } .a-wb { grid-area: wb; }
+.a-fn1 { grid-area: fn1; } .a-rec { grid-area: rec; } .a-shutter { grid-area: shutter; } .a-front { grid-area: front; justify-self: stretch; }
+.a-drive { grid-area: drive; } .a-play { grid-area: play; } .a-evf { grid-area: evf; } .a-view { grid-area: view; }
+.a-light { grid-area: light; } .a-afon { grid-area: afon; } .a-dial { grid-area: dial; justify-self: stretch; } .a-lcd { grid-area: lcd; }
+.a-stick { grid-area: stick; } .a-ael { grid-area: ael; } .a-q { grid-area: q; } .a-pad { grid-area: pad; } .a-disp { grid-area: disp; }
+.a-fn2 { grid-area: fn2; } .a-fn3 { grid-area: fn3; } .a-lens { grid-area: lens; } .a-bt { grid-area: bt; }
