@@ -650,6 +650,7 @@ fn block_register_layouts(
             | BlockDevice::VideoCodec { .. }
             | BlockDevice::ImagingBuffer { .. }
             | BlockDevice::BootControl { .. }
+            | BlockDevice::Xp5ImagingStatistics { .. }
             | BlockDevice::ImagingDsp { .. }
             | BlockDevice::ByteI2c { .. }
             | BlockDevice::UnmodeledBusDrain { .. } => {}
