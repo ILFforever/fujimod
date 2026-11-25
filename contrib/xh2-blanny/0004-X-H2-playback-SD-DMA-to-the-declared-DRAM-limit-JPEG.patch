@@ -1,0 +1,674 @@
+From cd5acf97e10b7d684b0cb2dff47c3bb90dcff74e Mon Sep 17 00:00:00 2001
+From: ILFforever <hammymukura@gmail.com>
+Date: Wed, 25 Nov 2026 20:42:09 +0700
+Subject: [PATCH 4/4] X-H2 playback: SD DMA to the declared DRAM limit, JPEG
+ blocks and playback stubs
+
+- 25-sd: ram_bytes = 0xf0000000, the board's [dram] limit (RAM 0+0x80000000
+  and 0x80000000+0x70000000). Playback of an SD picture DMAs to 0xeec00000,
+  which the old 0x80000000 limit refused.
+- 52-jpeg / 58-playback: the JPEG encoder and decoder, declared as on the
+  X-T5. Playback of a slot 2 picture writes the decoder (+0x118) first.
+- 57-develop-playback-port: the X-T5's develop/playback completion stubs and
+  helper blocks the X-H2 board did not declare (0xffd0c000 resizer and the
+  rest). Interrupt lines and constants are the X-T5's, UNVERIFIED on the X-H2.
+
+Verified on 5.20: playback opens a camera JPEG in slot 2 (file number, date,
+shooting info shown; the decoder stub draws no pixels), and the playback menu
+lists all three pages.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../xh2/5.20/xp5-boot/manifest.d/25-sd.toml   |   2 +-
+ .../xh2/5.20/xp5-boot/manifest.d/52-jpeg.toml |  10 +
+ .../manifest.d/57-develop-playback-port.toml  | 258 ++++++++++++++++++
+ .../5.20/xp5-boot/manifest.d/58-playback.toml |  11 +
+ .../xh2/5.30/xp5-boot/manifest.d/25-sd.toml   |   2 +-
+ .../xh2/5.33/xp5-boot/manifest.d/25-sd.toml   |   2 +-
+ .../xh2/5.33/xp5-boot/manifest.d/52-jpeg.toml |  10 +
+ .../manifest.d/57-develop-playback-port.toml  | 258 ++++++++++++++++++
+ .../5.33/xp5-boot/manifest.d/58-playback.toml |  11 +
+ 9 files changed, 561 insertions(+), 3 deletions(-)
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-jpeg.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/57-develop-playback-port.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/58-playback.toml
+ create mode 100644 catalog/firmware/xh2/5.33/xp5-boot/manifest.d/52-jpeg.toml
+ create mode 100644 catalog/firmware/xh2/5.33/xp5-boot/manifest.d/57-develop-playback-port.toml
+ create mode 100644 catalog/firmware/xh2/5.33/xp5-boot/manifest.d/58-playback.toml
+
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
+index d29cfc61..35322a75 100644
+--- a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
+@@ -30,7 +30,7 @@ protocol = "sdhc"
+ transfer_ticks = 1000
+ clock_ticks = 1000
+ rca = 1
+-ram_bytes = 0x80000000
++ram_bytes = 0xf0000000 # the [dram] limit: RAM 0+0x80000000 and 0x80000000+0x70000000 (manifest.toml); playback DMA reaches 0xeec00000
+ dram_alias = false
+ # DMA address bits 34..32 of slot 0, port 0: the writer 0x13aaae0 (the X-T5's 0x13a8ea0)
+ # stores (buffer >> 32) & 7 at 0xff90e7d8 + slot * 12 before each block transfer.
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-jpeg.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-jpeg.toml
+new file mode 100644
+index 00000000..274e25ef
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-jpeg.toml
+@@ -0,0 +1,10 @@
++# JPEG encoder (the SoC's jpeg block), declared as on the X-T5 (xt5/4.31 52-jpeg.toml).
++# The X-H2 playback path writes this block's neighbour 0xffd11000 when it opens a
++# picture; the interrupt line and run time are the X-T5's, UNVERIFIED on the X-H2.
++[[device]]
++base = 0xffd10000
++size = 0x1000
++kind = "jpeg-encoder"
++[device.options]
++irq = 207
++run_ticks = 1000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/57-develop-playback-port.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/57-develop-playback-port.toml
+new file mode 100644
+index 00000000..cdc8d0ee
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/57-develop-playback-port.toml
+@@ -0,0 +1,258 @@
++# Develop and playback completion stubs and helper blocks, ported as declared on the
++# X-T5 (xt5/4.31: 55-develop-stubs, 56-develop-stubs-2, 57-develop-stubs-3, 59-raw-stubs,
++# 63-hdr) so X-H2 playback can open a picture. The X-H2 is the same XP5 SoC; these were
++# added because X-H2 5.20 playback reached the X-T5 windows (0xffd11118, 0xffd0c114)
++# with nothing declared there. Interrupt lines, register constants and delays are the
++# X-T5's, UNVERIFIED on the X-H2. Completion stubs are not models of their blocks.
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xff975000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x98, mode = "constant", value = 0x1 },
++  { offset = 0x100, mode = "constant", value = 0x1 },
++]
++irq = 206
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x104, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x108, mode = "w1c", status_offset = 0x104, bits = 0x1 }
++irq_mask_offset = 0x10c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff977000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x308, mode = "constant", value = 0x10001 },
++]
++irq = 176
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x310, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c" }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff981000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x830, mode = "constant", value = 0x01110111 },
++]
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xff984000
++size = 0x1000
++kind = "imaging-rzl2"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x100, mode = "constant", value = 0x01000100 },
++]
++irq = 205
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x104, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x108, mode = "w1c", status_offset = 0x104, bits = 0x7 }
++irq_mask_offset = 0x10c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 63-hdr.toml.
++[[device]]
++base = 0xff986000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x0f8, mode = "constant", value = 0x10100 },
++]
++irq = 198
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0xfc, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0xf8, mode = "w1c", status_offset = 0xfc, bits = 0x1 }
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff987000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 175
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xffd00000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 199
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x20, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x24, mode = "w1c", status_offset = 0x20, bits = 0x1 }
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xffd0c000
++size = 0x1000
++kind = "imaging-resz"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x108, mode = "constant", value = 0x01000100 },
++]
++irq = 203
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x10c, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x110, mode = "w1c", status_offset = 0x10c, bits = 0x3 }
++irq_mask_offset = 0x114
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 59-raw-stubs.toml.
++[[device]]
++base = 0xffd12000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "command" },
++]
++irq = 209
++starts = [
++  { offset = 0x000, mask = 0x1 },
++  { offset = 0x100, mask = 0x1 },
++]
++delay_us = 200
++completion = [{ offset = 0x04, set = 0x10001 }]
++ack = { offset = 0x04, mode = "w1c" }
++
++# From xt5/4.31 56-develop-stubs-2.toml.
++[[device]]
++base = 0xffd21000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 212
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 63-hdr.toml.
++[[device]]
++base = 0xffd23000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x010, mode = "constant", value = 0x10001 },
++]
++irq = 214
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xffd24000
++size = 0x1000
++kind = "imaging-tnr"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++]
++irq = 218
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x314, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c", status_offset = 0x314, bits = 0x1 }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xffd26000
++size = 0x1000
++kind = "imaging-fcnv"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x308, mode = "constant", value = 0x10001 },
++]
++irq = 217
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x310, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c" }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 56-develop-stubs-2.toml.
++[[device]]
++base = 0xffd27000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++  { offset = 0x14, mode = "constant", value = 0x10001 },
++]
++irq = 215
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/58-playback.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/58-playback.toml
+new file mode 100644
+index 00000000..75d336e4
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/58-playback.toml
+@@ -0,0 +1,11 @@
++# JPEG decoder used by playback, declared as on the X-T5 (xt5/4.31 58-playback.toml).
++# X-H2 5.20 playback of a slot 2 picture writes +0x118 = 1 (PC 0x5de10, LR 0x13b8f64)
++# before any other model answered it. The interrupt line and run time are the X-T5's,
++# UNVERIFIED on the X-H2.
++[[device]]
++base = 0xffd11000
++size = 0x1000
++kind = "jpeg-decoder"
++[device.options]
++irq = 208
++run_ticks = 1000
+diff --git a/catalog/firmware/xh2/5.30/xp5-boot/manifest.d/25-sd.toml b/catalog/firmware/xh2/5.30/xp5-boot/manifest.d/25-sd.toml
+index d29cfc61..35322a75 100644
+--- a/catalog/firmware/xh2/5.30/xp5-boot/manifest.d/25-sd.toml
++++ b/catalog/firmware/xh2/5.30/xp5-boot/manifest.d/25-sd.toml
+@@ -30,7 +30,7 @@ protocol = "sdhc"
+ transfer_ticks = 1000
+ clock_ticks = 1000
+ rca = 1
+-ram_bytes = 0x80000000
++ram_bytes = 0xf0000000 # the [dram] limit: RAM 0+0x80000000 and 0x80000000+0x70000000 (manifest.toml); playback DMA reaches 0xeec00000
+ dram_alias = false
+ # DMA address bits 34..32 of slot 0, port 0: the writer 0x13aaae0 (the X-T5's 0x13a8ea0)
+ # stores (buffer >> 32) & 7 at 0xff90e7d8 + slot * 12 before each block transfer.
+diff --git a/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/25-sd.toml b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/25-sd.toml
+index d29cfc61..35322a75 100644
+--- a/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/25-sd.toml
++++ b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/25-sd.toml
+@@ -30,7 +30,7 @@ protocol = "sdhc"
+ transfer_ticks = 1000
+ clock_ticks = 1000
+ rca = 1
+-ram_bytes = 0x80000000
++ram_bytes = 0xf0000000 # the [dram] limit: RAM 0+0x80000000 and 0x80000000+0x70000000 (manifest.toml); playback DMA reaches 0xeec00000
+ dram_alias = false
+ # DMA address bits 34..32 of slot 0, port 0: the writer 0x13aaae0 (the X-T5's 0x13a8ea0)
+ # stores (buffer >> 32) & 7 at 0xff90e7d8 + slot * 12 before each block transfer.
+diff --git a/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/52-jpeg.toml b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/52-jpeg.toml
+new file mode 100644
+index 00000000..274e25ef
+--- /dev/null
++++ b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/52-jpeg.toml
+@@ -0,0 +1,10 @@
++# JPEG encoder (the SoC's jpeg block), declared as on the X-T5 (xt5/4.31 52-jpeg.toml).
++# The X-H2 playback path writes this block's neighbour 0xffd11000 when it opens a
++# picture; the interrupt line and run time are the X-T5's, UNVERIFIED on the X-H2.
++[[device]]
++base = 0xffd10000
++size = 0x1000
++kind = "jpeg-encoder"
++[device.options]
++irq = 207
++run_ticks = 1000
+diff --git a/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/57-develop-playback-port.toml b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/57-develop-playback-port.toml
+new file mode 100644
+index 00000000..cdc8d0ee
+--- /dev/null
++++ b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/57-develop-playback-port.toml
+@@ -0,0 +1,258 @@
++# Develop and playback completion stubs and helper blocks, ported as declared on the
++# X-T5 (xt5/4.31: 55-develop-stubs, 56-develop-stubs-2, 57-develop-stubs-3, 59-raw-stubs,
++# 63-hdr) so X-H2 playback can open a picture. The X-H2 is the same XP5 SoC; these were
++# added because X-H2 5.20 playback reached the X-T5 windows (0xffd11118, 0xffd0c114)
++# with nothing declared there. Interrupt lines, register constants and delays are the
++# X-T5's, UNVERIFIED on the X-H2. Completion stubs are not models of their blocks.
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xff975000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x98, mode = "constant", value = 0x1 },
++  { offset = 0x100, mode = "constant", value = 0x1 },
++]
++irq = 206
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x104, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x108, mode = "w1c", status_offset = 0x104, bits = 0x1 }
++irq_mask_offset = 0x10c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff977000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x308, mode = "constant", value = 0x10001 },
++]
++irq = 176
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x310, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c" }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff981000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x830, mode = "constant", value = 0x01110111 },
++]
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xff984000
++size = 0x1000
++kind = "imaging-rzl2"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x100, mode = "constant", value = 0x01000100 },
++]
++irq = 205
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x104, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x108, mode = "w1c", status_offset = 0x104, bits = 0x7 }
++irq_mask_offset = 0x10c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 63-hdr.toml.
++[[device]]
++base = 0xff986000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x0f8, mode = "constant", value = 0x10100 },
++]
++irq = 198
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0xfc, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0xf8, mode = "w1c", status_offset = 0xfc, bits = 0x1 }
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xff987000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 175
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xffd00000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 199
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x20, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x24, mode = "w1c", status_offset = 0x20, bits = 0x1 }
++
++# From xt5/4.31 55-develop-stubs.toml.
++[[device]]
++base = 0xffd0c000
++size = 0x1000
++kind = "imaging-resz"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x108, mode = "constant", value = 0x01000100 },
++]
++irq = 203
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x10c, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x110, mode = "w1c", status_offset = 0x10c, bits = 0x3 }
++irq_mask_offset = 0x114
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 59-raw-stubs.toml.
++[[device]]
++base = 0xffd12000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "command" },
++]
++irq = 209
++starts = [
++  { offset = 0x000, mask = 0x1 },
++  { offset = 0x100, mask = 0x1 },
++]
++delay_us = 200
++completion = [{ offset = 0x04, set = 0x10001 }]
++ack = { offset = 0x04, mode = "w1c" }
++
++# From xt5/4.31 56-develop-stubs-2.toml.
++[[device]]
++base = 0xffd21000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++]
++irq = 212
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 63-hdr.toml.
++[[device]]
++base = 0xffd23000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x010, mode = "constant", value = 0x10001 },
++]
++irq = 214
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xffd24000
++size = 0x1000
++kind = "imaging-tnr"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++]
++irq = 218
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x314, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c", status_offset = 0x314, bits = 0x1 }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 57-develop-stubs-3.toml.
++[[device]]
++base = 0xffd26000
++size = 0x1000
++kind = "imaging-fcnv"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x308, mode = "constant", value = 0x10001 },
++]
++irq = 217
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x310, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x310, mode = "w1c" }
++irq_mask_offset = 0x30c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# From xt5/4.31 56-develop-stubs-2.toml.
++[[device]]
++base = 0xffd27000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x00, mode = "constant", value = 0x1 },
++  { offset = 0x10, mode = "constant", value = 0x10001 },
++  { offset = 0x14, mode = "constant", value = 0x10001 },
++]
++irq = 215
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x30, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x34, mode = "w1c", status_offset = 0x30, bits = 0x1 }
++irq_mask_offset = 0x38
++irq_mask_bit = 0
++irq_mask_set_masks = false
+diff --git a/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/58-playback.toml b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/58-playback.toml
+new file mode 100644
+index 00000000..75d336e4
+--- /dev/null
++++ b/catalog/firmware/xh2/5.33/xp5-boot/manifest.d/58-playback.toml
+@@ -0,0 +1,11 @@
++# JPEG decoder used by playback, declared as on the X-T5 (xt5/4.31 58-playback.toml).
++# X-H2 5.20 playback of a slot 2 picture writes +0x118 = 1 (PC 0x5de10, LR 0x13b8f64)
++# before any other model answered it. The interrupt line and run time are the X-T5's,
++# UNVERIFIED on the X-H2.
++[[device]]
++base = 0xffd11000
++size = 0x1000
++kind = "jpeg-decoder"
++[device.options]
++irq = 208
++run_ticks = 1000
+-- 
+2.54.0 (Apple Git-157)
+

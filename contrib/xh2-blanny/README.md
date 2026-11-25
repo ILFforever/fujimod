@@ -15,15 +15,20 @@ What to take into `xh2-blanny`:
        `xh2-blanny`'s own commit `c92e94f5`, which `main` does not have.
      - An opt-in `FUJIMOD_COMPANION_TICK_DIVIDER` fast mode.
    - **Emulator GUI:** an X-H2 panel laid out as on the body.
-2. Apply the key wiring, written against `xh2-blanny`'s catalog:
+2. Apply the X-H2 board series, written against `xh2-blanny`'s tip
+   (`6dd3058d`), in order:
 
    ```sh
-   git am contrib/xh2-blanny/0001-xh2-keys-from-520-readers.patch
+   git am contrib/xh2-blanny/000*.patch
    ```
 
-   It adds Q (ADC 6), PLAY / DRIVE / VIEW (a new ADC 5 ladder) and Fn1 / Fn2
-   (GPIO 0.4 / 0.15). Each rung's `basis` names the 5.20 key reader and
-   scanner row it comes from.
+   - 0001 X-H2 5.20 on the board (boots to REC)
+   - 0002 X-H2 5.33 on the board (boots to REC; one more MENU at first start)
+   - 0003 Q (ADC 6), PLAY / DRIVE / VIEW (new ADC 5 ladder), Fn1 / Fn2 (GPIO
+     0.4 / 0.15). Each rung's `basis` names its 5.20 key reader and scanner row.
+   - 0004 Playback: SD DMA to the declared DRAM limit, the JPEG encoder and
+     decoder, and the X-T5's develop/playback stubs. 5.20 then opens a camera
+     JPEG from the SD slot.
 
 Fast settings used for X-H2 testing: `FUJIMOD_SMAPH_CPU=1` and
 `FUJIMOD_COMPANION_TICK_DIVIDER=32`. A 16 s boot to REC takes 49 s instead of

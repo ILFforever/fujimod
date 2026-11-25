@@ -1,0 +1,2255 @@
+From 8764121a534239604e52a4ffd5641b7dd537ca2d Mon Sep 17 00:00:00 2001
+From: ILFforever <hammymukura@gmail.com>
+Date: Wed, 25 Nov 2026 20:41:52 +0700
+Subject: [PATCH 1/4] X-H2 5.20 on the X-H2 board: boots to REC
+
+Ports the X-H2 5.20 firmware onto the shared X-H2 board: per-version boot
+manifest and the 5.20 addresses the board needs, read from 5.20's own code.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ catalog/firmware/xh2/5.20/firmware.json       | 229 ++++++++++++++++++
+ .../xh2/5.20/xp5-boot/card-handoff.toml       | 211 ++++++++++++++++
+ .../5.20/xp5-boot/manifest.d/10-timer.toml    |  12 +
+ .../5.20/xp5-boot/manifest.d/20-storage.toml  |  30 +++
+ .../xp5-boot/manifest.d/21-clock-gates.toml   |  10 +
+ .../xp5-boot/manifest.d/22-general-dma.toml   |  20 ++
+ .../xp5-boot/manifest.d/23-flash-dma.toml     |   6 +
+ .../xp5-boot/manifest.d/24-output-link.toml   |  11 +
+ .../xh2/5.20/xp5-boot/manifest.d/25-sd.toml   |  54 +++++
+ .../xp5-boot/manifest.d/26-clock-banks.toml   |   9 +
+ .../xp5-boot/manifest.d/30-pin-control.toml   |   5 +
+ .../xh2/5.20/xp5-boot/manifest.d/31-adc.toml  |  11 +
+ .../xh2/5.20/xp5-boot/manifest.d/32-gpio.toml |  43 ++++
+ .../manifest.d/33-soc-temperature.toml        |   5 +
+ .../manifest.d/34-power-controller.toml       |  20 ++
+ .../xh2/5.20/xp5-boot/manifest.d/42-hdmi.toml |  17 ++
+ .../xp5-boot/manifest.d/43-panel-serial.toml  |  31 +++
+ .../xh2/5.20/xp5-boot/manifest.d/44-i2c1.toml |  10 +
+ .../xh2/5.20/xp5-boot/manifest.d/45-i2c2.toml |  13 +
+ .../5.20/xp5-boot/manifest.d/47-dv720.toml    |  39 +++
+ .../5.20/xp5-boot/manifest.d/48-ddr-phy.toml  |  42 ++++
+ .../5.20/xp5-boot/manifest.d/50-imaging.toml  | 155 ++++++++++++
+ .../xp5-boot/manifest.d/51-imaging-reset.toml |  12 +
+ .../xp5-boot/manifest.d/52-imaging-phy.toml   |  11 +
+ .../manifest.d/53-imaging-buffer.toml         |  14 ++
+ .../xp5-boot/manifest.d/54-movdc-tables.toml  |  21 ++
+ .../5.20/xp5-boot/manifest.d/55-develop.toml  |  52 ++++
+ .../5.20/xp5-boot/manifest.d/60-mcore.toml    |  18 ++
+ .../xp5-boot/manifest.d/61-input-capture.toml |  47 ++++
+ .../manifest.d/62-companion-serial.toml       |  65 +++++
+ .../xp5-boot/manifest.d/63-power-gates.toml   |  14 ++
+ .../manifest.d/64-memory-configuration.toml   |  38 +++
+ .../manifest.d/65-configuration-groups.toml   | 229 ++++++++++++++++++
+ .../xh2/5.20/xp5-boot/manifest.d/66-usb.toml  |  54 +++++
+ .../manifest.d/67-reset-handshake.toml        |  14 ++
+ .../xp5-boot/manifest.d/68-audio-serial.toml  |  23 ++
+ .../xh2/5.20/xp5-boot/manifest.d/69-lz.toml   |  20 ++
+ .../5.20/xp5-boot/manifest.d/70-renderer.toml |  20 ++
+ .../5.20/xp5-boot/manifest.d/71-display.toml  |  48 ++++
+ .../xp5-boot/manifest.d/72-update-uart.toml   |  32 +++
+ .../firmware/xh2/5.20/xp5-boot/manifest.toml  |  80 ++++++
+ .../firmware/xh2/5.20/xp5-boot/streams.toml   |  26 ++
+ configurations/emulator/xh2-520/run.json      |  73 ++++++
+ 43 files changed, 1894 insertions(+)
+ create mode 100644 catalog/firmware/xh2/5.20/firmware.json
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/card-handoff.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/10-timer.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/20-storage.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/21-clock-gates.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/22-general-dma.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/23-flash-dma.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/24-output-link.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/26-clock-banks.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/30-pin-control.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/31-adc.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/32-gpio.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/33-soc-temperature.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/34-power-controller.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/42-hdmi.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/43-panel-serial.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/44-i2c1.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/45-i2c2.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/47-dv720.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/48-ddr-phy.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/50-imaging.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/51-imaging-reset.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-imaging-phy.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/53-imaging-buffer.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/54-movdc-tables.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/55-develop.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/60-mcore.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/61-input-capture.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/62-companion-serial.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/63-power-gates.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/64-memory-configuration.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/65-configuration-groups.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/66-usb.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/67-reset-handshake.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/68-audio-serial.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/69-lz.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/70-renderer.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/71-display.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.d/72-update-uart.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/manifest.toml
+ create mode 100644 catalog/firmware/xh2/5.20/xp5-boot/streams.toml
+ create mode 100644 configurations/emulator/xh2-520/run.json
+
+diff --git a/catalog/firmware/xh2/5.20/firmware.json b/catalog/firmware/xh2/5.20/firmware.json
+new file mode 100644
+index 00000000..d0484b38
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/firmware.json
+@@ -0,0 +1,229 @@
++{
++ "$schema": "https://fujimod.com/schemas/firmware.schema.json",
++ "schema": 1,
++ "id": "xh2-520",
++ "body_id": "xh2",
++ "version": "5.20",
++ "update": {
++  "size": 110302472,
++  "sha256": "46c2a30f12e192d341f6786f312eb655f0266c52ef54ce0f21662c6f663875c8"
++ },
++ "boot_rom": null,
++ "installation": null,
++ "generated_facts": null,
++ "layouts": {
++  "views": {},
++  "profiles": {
++   "xh2-520": {
++    "flash_image": {
++     "dat_origin": 628,
++     "xor": 255
++    },
++    "preload": [
++     {
++      "address": 17563648,
++      "dat_offset": 1704564,
++      "length": 2048,
++      "sha256": "2166af0cf72f21b11811b5200f0c894a9ce706278b04d4c6ea28b3d42fab298c"
++     },
++     {
++      "address": 98896,
++      "words": [
++       65534,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535,
++       65535
++      ],
++      "word_size": 4
++     },
++     {
++      "address": 98976,
++      "value": 1398030660,
++      "size": 4
++     },
++     {
++      "address": 99104,
++      "value": 1398030660,
++      "size": 4
++     },
++     {
++      "address": 99232,
++      "value": 4,
++      "size": 4
++     },
++     {
++      "address": 99236,
++      "value": 0,
++      "size": 4
++     },
++     {
++      "address": 99240,
++      "value": 0,
++      "size": 8
++     },
++     {
++      "address": 99348,
++      "value": 0,
++      "size": 4
++     },
++     {
++      "address": 99352,
++      "words": [
++       0,
++       0,
++       0,
++       98304,
++       0
++      ],
++      "word_size": 4
++     },
++     {
++      "address": 100380,
++      "words": [
++       1,
++       26,
++       0,
++       257,
++       2906907
++      ],
++      "word_size": 4
++     }
++    ],
++    "cpu": [
++     {
++      "id": 0,
++      "pc": 361596,
++      "cpsr": 964,
++      "running": true,
++      "regs": {
++       "x19": 0,
++       "x20": 21844252,
++       "x21": 98896
++      },
++      "sysregs": {
++       "ICC_PMR_EL1": 255,
++       "ICC_IGRPEN0_EL1": 1,
++       "ICC_IGRPEN1_EL1": 1,
++       "VBAR_EL1": 366592,
++       "SCTLR_EL1": 818939904,
++       "CPACR_EL1": 3145728,
++       "SP_EL0": 696320,
++       "SP_EL1": 696320
++      }
++     },
++     {
++      "id": 1,
++      "pc": 361596,
++      "cpsr": 964,
++      "running": true,
++      "regs": {
++       "x19": 1,
++       "x20": 21844252,
++       "x21": 98896
++      },
++      "sysregs": {
++       "ICC_PMR_EL1": 255,
++       "ICC_IGRPEN0_EL1": 1,
++       "ICC_IGRPEN1_EL1": 1,
++       "VBAR_EL1": 366592,
++       "SCTLR_EL1": 818939904,
++       "CPACR_EL1": 3145728,
++       "SP_EL0": 712704,
++       "SP_EL1": 712704
++      }
++     },
++     {
++      "id": 2,
++      "pc": 361596,
++      "cpsr": 964,
++      "running": true,
++      "regs": {
++       "x19": 2,
++       "x20": 21844252,
++       "x21": 98896
++      },
++      "sysregs": {
++       "ICC_PMR_EL1": 255,
++       "ICC_IGRPEN0_EL1": 1,
++       "ICC_IGRPEN1_EL1": 1,
++       "VBAR_EL1": 366592,
++       "SCTLR_EL1": 818939904,
++       "CPACR_EL1": 3145728,
++       "SP_EL0": 729088,
++       "SP_EL1": 729088
++      }
++     },
++     {
++      "id": 3,
++      "pc": 361596,
++      "cpsr": 964,
++      "running": true,
++      "regs": {
++       "x19": 3,
++       "x20": 21844252,
++       "x21": 98896
++      },
++      "sysregs": {
++       "ICC_PMR_EL1": 255,
++       "ICC_IGRPEN0_EL1": 1,
++       "ICC_IGRPEN1_EL1": 1,
++       "VBAR_EL1": 366592,
++       "SCTLR_EL1": 818939904,
++       "CPACR_EL1": 3145728,
++       "SP_EL0": 745472,
++       "SP_EL1": 745472
++      }
++     }
++    ],
++    "gic_initial": {
++     "0x0": 7
++    },
++    "gic_redistributor_initial": [
++     {
++      "core": 0,
++      "offset": 20,
++      "size": 4,
++      "value": 0
++     },
++     {
++      "core": 1,
++      "offset": 20,
++      "size": 4,
++      "value": 0
++     },
++     {
++      "core": 2,
++      "offset": 20,
++      "size": 4,
++      "value": 0
++     },
++     {
++      "core": 3,
++      "offset": 20,
++      "size": 4,
++      "value": 0
++     }
++    ],
++    "limits": [
++     "Ported from the xh2-530 profile of this board: 5.20 cold-table SHA-256 and x20 = 0x14d511c (update image segment-4 entry); x21 = 0x18250 is 5.20's own reset-stage hand-off."
++    ]
++   }
++  }
++ }
++}
+\ No newline at end of file
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/card-handoff.toml b/catalog/firmware/xh2/5.20/xp5-boot/card-handoff.toml
+new file mode 100644
+index 00000000..817be986
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/card-handoff.toml
+@@ -0,0 +1,211 @@
++# Firmware entry after the mask ROM loads the SD card startup stage.
++pc = 0xff800000
++sp = 0xff83c000
++slot = 0xff9b0000
++stage_max_bytes = 0x3c000
++
++[power_controller_registers]
++"0" = 0x8202
++"10" = 0x0002
++
++# DDR PHY register space (0xfb000000, 0xfb400000) is RAM in the boot manifest; the stage's first
++# fault was a write at 0xfb04017a (PC 0xff80dfc8).
++
++# Memory-controller status the stock setup polls (0xfaf07780 non-zero, low byte of 0xfaf07784 a
++# result code) after writing 0xfaf07680. Scripted answers, as the X-T5's.
++
++[[device]]
++base = 0xfaf07000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x780, mode = "constant", value = 1 }]
++
++[[device]]
++base = 0xfaf17000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x780, mode = "constant", value = 1 }]
++
++[[device]]
++base = 0xfaf27000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x780, mode = "constant", value = 1 }]
++
++[[device]]
++base = 0xfaf37000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x780, mode = "constant", value = 1 }]
++
++# Memory-controller setup words the stock setup stores through its word writer 0xff80dfb8 and
++# never reads back (first fault: write at 0xfae60000, PC 0xff80dfbc). Store-only latches.
++
++[[device]]
++base = 0xfae60000
++size = 0x2000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae63000
++size = 0x1000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae70000
++size = 0x3000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae80000
++size = 0x4000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfaf09000
++size = 0x1000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfaf19000
++size = 0x1000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae62000
++size = 0x1000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfaf29000
++size = 0x1000
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfaf39000
++size = 0x1000
++kind = "write-only-registers"
++
++# The stage's loop 0xff801d24 stores 0x1ff to the word at +0xa0 of each of the 22 configuration banks
++# (0xfae00000 + 0x200 * n); the manifest declares only +0x20..+0x4c of each. Store-only latches.
++
++[[device]]
++base = 0xfae000a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae002a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae004a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae006a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae008a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00aa0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00ca0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00ea0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae010a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae012a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae014a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae016a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae018a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01aa0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01ca0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01ea0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae020a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae022a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae024a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae026a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae028a0
++size = 4
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02aa0
++size = 4
++kind = "write-only-registers"
++
++# GPIO pad model of a start that runs the stock setup: the setup programs each port's +4 word
++# (output enables) and +8 word, which the default "legacy" model misreads. "data-latch" (+4 output
++# enable, +0 output data) is the X-T5, X100VI and X-H2S model. Set for ROM and SD card starts only.
++[[window_options]]
++base = 0xff907000
++set = { pad_model = "data-latch" }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/10-timer.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/10-timer.toml
+new file mode 100644
+index 00000000..0b42363a
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/10-timer.toml
+@@ -0,0 +1,12 @@
++# The XP5 timer block (the SoC's `timer` and `extended-timer` blocks). The kernel's
++# counter helper 0x5d068 reads reload channel 15's current word 0xff908388 (channel n
++# at 0xff908310 + 8*n, enables at 0xff908300); 0x5b398 programs it for the RTOS tick.
++[[device]]
++base = 0xff908000
++size = 0x1000
++kind = "timer-focus-capture"
++
++[[device]]
++base = 0xff909000
++size = 0x1000
++kind = "timer-extended"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/20-storage.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/20-storage.toml
+new file mode 100644
+index 00000000..5fe08c50
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/20-storage.toml
+@@ -0,0 +1,30 @@
++# Original XOR-DAT payload at the selected aperture 0xf0000000+0x08000000; the
++# camera-specific missing tail starts erased. One backing is shared with the serial
++# flash controller; CPU aperture stores fail.
++[[device]]
++base = 0xf0000000
++size = 0x08000000
++kind = "flash-storage"
++[device.options]
++dat_origin = 0x274
++xor = 0xff
++erased_tail = 0xff
++
++# Controller bank 0xff90a000 (decoder 0x13883ec, FIFO +0x80, request +0xd0). The
++# retained boot ID 0x2c5b1b (hardware info +0x5dc, kernel copy 0xa4b64) selects
++# descriptor row 0x1c50fa0 through 0x1387870 -> 0x1387214: Micron MT35XU01GBBA,
++# 128 MiB serial NOR, the X100VI and X-H2S part.
++[[device]]
++base = 0xff90a000
++size = 0x1000
++kind = "flash-storage-controller"
++[device.options]
++jedec_id = 0x2c5b1b
++# The part as the boot ROM and setup stage leave it; the board starts at the kernel,
++# after both. The application takes the ID from the retained tuple (0x1386714), not
++# through the fresh-ID initializer 0x1387c94 that calls device initializer 0x1388288,
++# whose volatile-register write (WREN, 0x81, byte 0x14 at register 1) selects 20.
++# Read setup 0x13875b0 programs aperture read 0xfd with 20 dummy cycles (+0x44,
++# +0x74 = 0x14), and the board reaches the first aperture read with no write to the
++# part: its volatile register already selects 20 dummy cycles.
++inherited_dummy_cycles = 20
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/21-clock-gates.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/21-clock-gates.toml
+new file mode 100644
+index 00000000..669c2e6d
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/21-clock-gates.toml
+@@ -0,0 +1,10 @@
++# Clock-gate bank (the SoC's `clock-gates` block). The adapters 0x13ad514/0x13ad588
++# address its words through the pointer table 0x18f4688 (bank 10 = 0xff90c928, the
++# companion release bit 21) and the read wrapper 0x13d4990 reads +0x300 at startup.
++# Known gate/reset latches start zero; this is a session assumption.
++[[device]]
++base = 0xff90c000
++size = 0x1000
++kind = "clock-gates"
++[device.options]
++configuration_word = 0
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/22-general-dma.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/22-general-dma.toml
+new file mode 100644
+index 00000000..3a86a1f2
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/22-general-dma.toml
+@@ -0,0 +1,20 @@
++# General DMA (the SoC's `dma`, `dma-address-high` and `dma-routes` blocks). The reset
++# routine 0x1390dd0 sets bit 28 of the first word of each of the eight banks
++# 0xff930000..0xff937000, then writes the global words 0xff90e56c..0xff90e578.
++# companion_irq_base = 83 is the SoC's declared companion line base for bank 0.
++[[device]]
++base = 0xff930000
++size = 0x8000
++kind = "general-dma"
++[device.options]
++companion_irq_base = 83
++
++[[device]]
++base = 0xff90e748
++size = 0x40
++kind = "dma-address-high"
++
++[[device]]
++base = 0xff90e500
++size = 0x20
++kind = "dma-request-routing"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/23-flash-dma.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/23-flash-dma.toml
+new file mode 100644
+index 00000000..1169a2be
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/23-flash-dma.toml
+@@ -0,0 +1,6 @@
++# Flash DMA (the SoC's `flash-dma` block): 0x139d8f0 clears +0x0 when it sets the
++# channel up. Functional 1 us completion, level INTID 225 until the masked ACK at +0x1c.
++[[device]]
++base = 0xff939000
++size = 0x1000
++kind = "flash-storage-dma"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/24-output-link.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/24-output-link.toml
+new file mode 100644
+index 00000000..a1783e18
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/24-output-link.toml
+@@ -0,0 +1,11 @@
++# Display output link, the X-T5 and X-H2S window and kind (xt5/4.31 24-output-link.toml).
++# 0x1444c38 (the X-T5's 0x143e964 apart from global offsets) reads +0x04 (0x1444cd0..
++# 0x1444cd8), writes +0x04, +0x08, +0x18, +0x0c, +0x10 and +0x14 from the tables
++# 0x1999c00..0x1999db8, then writes 0 to +0x00 and polls bit 0 (0x1444eec..0x1444f0c);
++# 0x1444fac (the X-T5's 0x143ecd8) read-modify-writes +0x04. Every access is a word in
++# +0x00..+0x18, all the model accepts; no interrupt handler names the block. The model
++# completes at once; its initial words of 0 are session assumptions.
++[[device]]
++base = 0xff9a1000
++size = 0x1c
++kind = "display-output-link"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
+new file mode 100644
+index 00000000..d29cfc61
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/25-sd.toml
+@@ -0,0 +1,54 @@
++# SD host instance 0, the X-H2's SD slot, in the X-T5 layout (xt5/4.31 25-sd.toml): the
++# UHS-I SDH30 port at +0, its register-selection words at +0x1e0, the UHS-II PHY block at
++# +0x2000 and the UHS-II port at +0x2200. The per-slot initialization 0x13a8064 (the X-T5's
++# 0x13a636c) builds (slot << 14) + 0xff9b2080 (0x13a8138..0x13a813c) and read-modify-writes
++# PHY +0x80 (0x13a8148..0x13a8154). The driver references 0xff9b0000, 0xff9b2000 and
++# 0xff9b4000 from 83, 73 and 1 sites, the X-T5's counts, and its register accesses are the
++# X-T5's: 0x13a923c, 0x13a8a08, 0x13a9c80, 0x13a9d20, 0x13a83fc, 0x13a9c04, 0x13a8a6c,
++# 0x13a9fcc, the clock ladder 0x13a90b4 and the interface clock configuration 0x13a8e5c match
++# 0x13a75fc, 0x13a6dbc, 0x13a8040, 0x13a80e0, 0x13a67b0, 0x13a7fc4, 0x13a6e20, 0x13a838c,
++# 0x13a7474 and 0x13a7210 apart from branch targets and globals; 0x13a8064, its caller
++# 0x13a8260 and the interrupt registration 0x13a60c4 differ only in clock-gate resource ids
++# and in dropping slot 1. Instance 1 is not declared: its only reference, 0xff9b403e in the
++# driver-strength setter 0x13a955c, has no caller, and 0x13a60c4 registers sources 0x84 and
++# 0x85 (INTIDs 262 and 267, rows 0x18ed670/0x18ed680 of the table 0x18ece30) for slot 0
++# only. Card presence is the [[sd]] run input in manifest.toml.
++#
++# Session assumptions, as on the X-T5 and X-H2S: transfer_ticks, clock_ticks and rca;
++# capabilities sets only bit 35 (UHS-II support), the only bit the driver reads (0x13a9fcc,
++# +0x2244 bit 3). ram_bytes is this run's DRAM limit; DRAM at 0x40000000 is separate, so no
++# XP4-style alias. No interrupt line is declared: the boot polls, and an asserted interrupt
++# refuses.
++
++[[device]]
++base = 0xff9b0000
++size = 0x1e0
++kind = "sdhci"
++[device.options.controller]
++base = 0xff9b0000
++protocol = "sdhc"
++transfer_ticks = 1000
++clock_ticks = 1000
++rca = 1
++ram_bytes = 0x80000000
++dram_alias = false
++# DMA address bits 34..32 of slot 0, port 0: the writer 0x13aaae0 (the X-T5's 0x13a8ea0)
++# stores (buffer >> 32) & 7 at 0xff90e7d8 + slot * 12 before each block transfer.
++address_high = 0xff90e7d8
++# The X-T5's stock clock steps: the ladder 0x13a90b4 and the interface clock configuration
++# 0x13a8e5c are its 0x13a7474 and 0x13a7210.
++speed_dividers = { interface = 2, default_speed = 4, high_speed = 2 }
++
++[[device]]
++base = 0xff9b01e0
++size = 8
++kind = "sd-interface"
++
++[[device]]
++base = 0xff9b2000
++size = 0x300
++kind = "sdhci-uhs2"
++[device.options]
++slot = 0xff9b0000
++capabilities = 0x800000000
++clock_ticks = 1000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/26-clock-banks.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/26-clock-banks.toml
+new file mode 100644
+index 00000000..418c0b02
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/26-clock-banks.toml
+@@ -0,0 +1,9 @@
++# Clock banks (the SoC's `clock-banks` block). The divider setter 0x13ad6e8 takes rows
++# of the 0x29-entry table 0x18f43a8 (16 bytes: bank, register, ..., mask 0x1ff) and
++# writes banks 0xffa01000..0xffa05000 and 0xffa10000..0xffa1b000. The factory registers
++# the known banks only; holes and unknown offsets still stop. Words start zero by
++# session assumption; no rate or lock-time claim.
++[[device]]
++base = 0xffa00000
++size = 0x20000
++kind = "clock-banks"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/30-pin-control.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/30-pin-control.toml
+new file mode 100644
+index 00000000..14d4c0cd
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/30-pin-control.toml
+@@ -0,0 +1,5 @@
++# Pin control (the SoC's `pin-control` block): 0x1381d0c reads +0x18 into its caller's word.
++[[device]]
++base = 0xff904000
++size = 0x1000
++kind = "pin-control"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/31-adc.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/31-adc.toml
+new file mode 100644
+index 00000000..d7f6781c
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/31-adc.toml
+@@ -0,0 +1,11 @@
++# ADC (the SoC's `adc` block). 0x140af08 -> 0x13aad30 -> 0x5e060 reads 15 channels at
++# 0xff906010 + 4*channel and caches them at 0x207aad8; channels 6, 13 and 14 feed the
++# OK/DISP/BACK, UP and joystick ladders, whose highest band ends at 3719, so 4095 holds
++# no key. Channel 0's 2713 is the X-T5 thermistor sample, INHERITED and UNVERIFIED on
++# the X-H2; the other values are no-key levels, not measured idle readings.
++[[device]]
++base = 0xff906000
++size = 0x1000
++kind = "adc"
++[device.options]
++samples = [2713, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095, 4095]
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/32-gpio.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/32-gpio.toml
+new file mode 100644
+index 00000000..f2bd509d
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/32-gpio.toml
+@@ -0,0 +1,43 @@
++# GPIO (the SoC's `gpio` and `gpio3` blocks). The sampler 0x138331c reads input
++# 0xff907014 + 0x40*bank, except bank 3 at 0xff90b014; 0x1382d10 writes bank 0's +0x1c.
++[[device]]
++base = 0xff907000
++size = 0x1000
++kind = "gpio"
++[device.options]
++# EL1 handoff assumption: the two active-low panel selects on SSP7, GPIO 15.13 (rear LCD,
++# client 3) and 15.15 (EVF, clients 7 and 8), start inactive (output latch 1), as the
++# X-T5's 12.8 and 12.10 do. The selects are driven only through the serial descriptors'
++# select words; no code drives 15.15 before the first LCD transfer, so with a zero latch
++# both panels would be selected. Whether the reset image or a pull-up sets this is NOT
++# established. 15.11 (the audio codec) keeps a zero latch; its driver drives it first.
++initial_outputs = [{ port = 15, levels = 0xa000 }]
++# Run input: nothing in the hot shoe, as on the X-T5. The debounce 0x141ae50 (the X-T5's
++# 0x1416ba4) samples GPIO 11.4 (0x138331c(0xb0004) at 0x141b168) and latches (level == 1)
++# at 0x2592a64 after 17 differing samples, posting 0x2f for high and 0x82f for low; with
++# the latch at 1 the `flashext` identification 0x1412d64 opens SSP3 client 13 (instance 3,
++# select 11.4) for the external flash. The default pad level is 1, which would attach a
++# flash nobody modeled.
++initial_inputs = [{ port = 11, pin = 4, high = false }]
++# Sensor power drive is sensed back on GPIO 4.4 (body.json gpio_feedback:
++# sensor-power-enable -> sensor-power-sense), as on the X-T5. The secondary loader's port-4
++# row (0x3218, row 0xf798) makes 4.4 an output with its latch low; the imaging power-on
++# table 0x3865d80 drives it high through 0x30e36b4 (0x153b10c(1, 1)) and the power-off
++# table 0x3865c18 low through 0x30e37b0. The imaging startup 0x30a4df0 runs the receiver
++# initializer 0x30ecb64 only while the pad reads low (0x30e3ba8, signal table 0x1b02478
++# entry 1 = 0x40004); the bare pad reads high, so the initializer never ran and the REC
++# start's receiver control 0x2f7caf4 returned without arming the receivers.
++feedback = [{ port = 4, register = 0, bit = 4, input_port = 4, input_pin = 4 }]
++# Shutter release: S1 (half press) is GPIO 0.0 and S2 (full press) is GPIO 0.1, both active low
++# (scanner records 0x1c52138 and 0x1c52160: selectors 0 and 1, released level 1, logical interrupts
++# 1 and 2 = INTIDs 116 and 117; read helper 0x138331c; body.json connections controls-gpio-0-0 and
++# controls-gpio-0-1). The key scanner does not poll them for a press, so the pins raise those
++# interrupts, as on the X-T5 (xt5/4.31 30-power-input.toml). With them
++# declared the scanner's S1 row state (0x1c52159) reads 1 during an S1 hold (interactive run of
++# 2026-11-23); a static trace shows press by interrupt and release by polling on both bodies.
++input_irqs = [{ port = 0, pin = 0, line = 116, active_high = false }, { port = 0, pin = 1, line = 117, active_high = false }]
++
++[[device]]
++base = 0xff90b000
++size = 0x1000
++kind = "gpio-port3"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/33-soc-temperature.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/33-soc-temperature.toml
+new file mode 100644
+index 00000000..6250a07b
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/33-soc-temperature.toml
+@@ -0,0 +1,5 @@
++# SoC temperature sensor (the SoC's `temperature` block); 0x13be028 writes +0xc.
++[[device]]
++base = 0xff905000
++size = 0x1000
++kind = "soc-temperature"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/34-power-controller.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/34-power-controller.toml
+new file mode 100644
+index 00000000..9ed30a55
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/34-power-controller.toml
+@@ -0,0 +1,20 @@
++# Power controller on SPI2 (0xff912000), chip select GPIO 11.6 active-high: logical
++# serial descriptor 0x12 at 0x18ea480 is [2, 0xb0006, 1, 2, 0x20, ...] (instance 2,
++# select 11.6), where the X-T5's descriptor 19 selects SPI8 and 15.15. The reader
++# 0x13d805c and writer 0x13d8878 use the four-byte packet with the one's-complement
++# checksum of the shared power-controller part; the RTC getter 0x13d9214 combines
++# registers 0x23/0x24 and 0x27 bit 1 is calendar-valid. rtc_seconds is a virtual input
++# (seconds since 2000-01-01), not a captured value; source_hz is the X-T5 and X100VI
++# value, UNVERIFIED.
++[[device]]
++base = 0xff912000
++size = 0x1000
++kind = "spi-controller"
++[device.options]
++source_hz = 48000000
++[[device.options.endpoints]]
++select = { port = 11, pin = 6, active_high = true }
++[device.options.endpoints.part]
++kind = "power-controller"
++rtc_seconds = 0x325ffea2
++rtc_valid = true
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/42-hdmi.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/42-hdmi.toml
+new file mode 100644
+index 00000000..be0ef4af
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/42-hdmi.toml
+@@ -0,0 +1,17 @@
++# HDMI hot-plug status word, the X-T5, X100VI and X-H2S window and kind (xt5/4.31
++# 42-hdmi.toml). The reader 0x1445e74 (the X-T5's 0x143fb8c) returns bit 0 of 0xff90e200,
++# the only access to the block. 0x1446b4c (the X-T5's 0x1440864) drives the sink supply
++# low, waits 100 timer units (0x1496554), polls for bit 0 set (up to 101 polls, 5 units
++# apart) and then drives it high again; the boot step 0x1448284 (0x1441f9c) posts event
++# 0x17f5 when bit 0 is clear (0x144673c) or arms a 200-unit periodic poll (0x1446780)
++# that posts it once bit 0 clears. The X-T5 drives SoC GPIO 9.13 for the supply; the X-H2
++# drives bit 7 of an I2C port expander's port 1 (0x1407314(0x10000007, 0)), whose result
++# it ignores (0x1446b70), and the expander is not modeled. connected_level = 0 is the
++# X-T5's inference from that order, not measured. No cable is attached, as for the USB
++# status word.
++[[device]]
++base = 0xff90e200
++size = 4
++kind = "hdmi-hot-plug-status"
++[device.options]
++connected_level = 0
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/43-panel-serial.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/43-panel-serial.toml
+new file mode 100644
+index 00000000..7834363b
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/43-panel-serial.toml
+@@ -0,0 +1,31 @@
++# SSP instance 7 (0xff910000 + 7*0x1000) carries the two panels, as SSP5 does on the X-T5
++# (xt5/4.31 43-panel-serial.toml). The open routine 0x137e2d4 initializes the controller
++# from a client of the serial descriptor table (lookup 0x137f2a8: 0x18ea120 + 0x30*n) as
++# 0x137f3c4(instance, word 3, word 6, word 7, word 8, word 4, word 10): word 3 is the
++# pin-mux function (written to 0xff90c700), words 6 and 7 become CR0 bits 6 and 7
++# (0x137f354), word 8 is the word size and word 4 the prescaler. Clients:
++#   3 (0x18ea1b0): select GPIO 15.13 active-low, mux 1, CR0 bits 6/7 clear (mode 0),
++#     prescaler 0x10, 16-bit words:
++#     the rear LCD. The task `lcdevf` (entry 0x143d734) powers the LCD on through
++#     0x143fb80: the output link 0x1444c38, then 0x143f050, which opens the client
++#     (0x143e854) and writes the panel table 0x1997900. The driver keeps no reply.
++#   8 (0x18ea2a0): select GPIO 15.15 active-low, mux 3, mode 0, prescaler 0x14, 8-bit words:
++#     the EVF (0x1440870, 0x1441b44; string "EvfSd_NG" at 0x1999098), one register byte
++#     then data bytes. Client 7 (0x18ea270) is the same select with 16-bit words; its
++#     only user, the read 0x14422d0, is reached from the service handler 0x2d41804.
++# Neither panel part is identified, so both are FujiMod's write-only command/data
++# register endpoint: writes are retained, and a read is refused because the reply is
++# unknown. MISO during writes is discarded; miso_high = false is UNVERIFIED. source_hz
++# is the X-T5 and X100VI value, UNVERIFIED. The selects start inactive (32-gpio.toml).
++[[device]]
++base = 0xff917000
++size = 0x1000
++kind = "spi-controller"
++[device.options]
++source_hz = 48000000
++[[device.options.endpoints]]
++select = { port = 15, pin = 13, active_high = false }
++part = { kind = "serial-command-registers", bits = 16, mode = 0, miso_high = false }
++[[device.options.endpoints]]
++select = { port = 15, pin = 15, active_high = false }
++part = { kind = "serial-command-registers", bits = 8, mode = 0, miso_high = false }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/44-i2c1.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/44-i2c1.toml
+new file mode 100644
+index 00000000..98a453ef
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/44-i2c1.toml
+@@ -0,0 +1,10 @@
++# I2C instance 1 at ff925000 (the SoC's `i2c1` block): selector 0x18eb770[1] = 4,
++# descriptor line 0x121 (289), the SoC profile's line. No part on this bus is
++# identified for the X-H2, so none is declared and every address is not acknowledged.
++[[device]]
++kind = "i2c-controller"
++base = 0xff925000
++size = 0x1000
++[device.options]
++interrupt = 289
++byte_ns = 1000000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/45-i2c2.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/45-i2c2.toml
+new file mode 100644
+index 00000000..7d452acb
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/45-i2c2.toml
+@@ -0,0 +1,13 @@
++# I2C instance 2 at ff926000 (controllers at ff924000 + n*0x1000; the open routine
++# 0x138996c writes 0xff924018 + (n << 12) = 3 through 0x1389148). Its interrupt is
++# selector 0x18eb770[2] = 5, whose descriptor 0x18ece30 + 16*5 holds line 0x122 (290);
++# buses 0..3 use lines 0x120..0x123, as on the X-T5. No part on this bus is identified,
++# so none is declared and every address is not acknowledged. byte_ns is a functional
++# latency, not a bus rate.
++[[device]]
++kind = "i2c-controller"
++base = 0xff926000
++size = 0x1000
++[device.options]
++interrupt = 290
++byte_ns = 1000000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/47-dv720.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/47-dv720.toml
+new file mode 100644
+index 00000000..841c3072
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/47-dv720.toml
+@@ -0,0 +1,39 @@
++# DV720 neural accelerator registers at ffe00000, the X-T5 and X100VI layout (47-dv720.toml
++# there). After the first-start screens the AI task 0x2ea34d8 zeroes +0x100..+0x14c one word
++# at a time (0x2ea368c..0x2ea36a8, end x23 = 0xffe00150 from 0x2ea3520) and calls 0x5a3b1d4
++# (0x2ea36ac). The initializer writes +0x800 = 0 through 0x5a3f184 (0x5a3b36c), which
++# stores the word (0x5a3f194) and cleans its cache line through 0x5a3f0d4 -> 0x14d1ae0; it
++# then writes +0x810, +0x820 = 0 and +0x800 = 1, reads +0x11c and writes +0x144 = 0x177654.
++# The X-T5's register helper skips the cache clean for 0xffe00000..0xfff00000; the X-H2's
++# does not, and the clean of a device window completes without a device access.
++# FujiMod's bring-up register file stores each write and reads it back. It is declared only
++# over those registers: the job start (+0x804, 0x5a3abf4) and the completion poll of +0x808
++# (0x5a3c504) stay unowned and refuse.
++# Not a model of the accelerator; nothing here is checked against the part.
++[[device]]
++base = 0xffe00100
++size = 0x50
++kind = "bringup-stub"
++[device.options]
++registers = []
++
++[[device]]
++base = 0xffe00800
++size = 0x4
++kind = "bringup-stub"
++[device.options]
++registers = []
++
++[[device]]
++base = 0xffe00810
++size = 0x4
++kind = "bringup-stub"
++[device.options]
++registers = []
++
++[[device]]
++base = 0xffe00820
++size = 0x4
++kind = "bringup-stub"
++[device.options]
++registers = []
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/48-ddr-phy.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/48-ddr-phy.toml
+new file mode 100644
+index 00000000..178e7d25
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/48-ddr-phy.toml
+@@ -0,0 +1,42 @@
++# DDR PHY mailbox pages and the controller pages of DRAM channels 2 and 3, the X-T5's
++# (xt5/4.31/xp5-boot/manifest.d/48-ddr-phy.toml). The X-T5 raises the DRAM operating point
++# on the first half-press; the X-H2 does it on REC entry: the REC backend action 0x2d89358
++# calls 0x2db3210 (0x2d89378), which calls recDdrPower(0) 0x2e56518 (0x2db3274) when
++# [0x3e13568] != 2, and that calls 0x13af778 (X-T5 0x13adb58) with the selected DRAM mode
++# (0x2e56594). The training drain 0x13bd764 (0x13bbb44) builds both +0x08 addresses at
++# 0x13bd304..0x13bd310, waits for bit 0 to clear (0x13bd320) and, after the +0x62 acknowledge,
++# to set (0x13bd348), and ends when the message word +0x64 reads 7 or 0xff (0x13bd7b4).
++# Bring-up register files, not models: +0x08 alternates 0, 1 on each read, +0x64 always
++# reads 7 ("training complete"), and every other register stores its last write.
++[[device]]
++base = 0xfb1a0000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x08, mode = "toggle", value = 1 }, { offset = 0x64, mode = "constant", value = 7 }]
++
++[[device]]
++base = 0xfb5a0000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x08, mode = "toggle", value = 1 }, { offset = 0x64, mode = "constant", value = 7 }]
++
++# Controller pages of channels 2 and 3. 0x13b1a44 (0x13afe24) writes both pages through
++# 0x13bd5bc (0x13bb99c), whose channel bases come from the table 0x18ff430; the unbounded poll
++# helper 0x13bd5e0 (0x13bb9c0) waits for +0x800 bit 0 to read 1 on both channels (0x13b1550)
++# and for +0x820 bit 0 to read 0 on even channels (0x13b190c). Bring-up register files, not
++# models; channel 3's +0x820 answers as channel 2's by symmetry only.
++[[device]]
++base = 0xfaf27000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x800, mode = "constant", value = 1 }, { offset = 0x820, mode = "constant", value = 0 }]
++
++[[device]]
++base = 0xfaf37000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = [{ offset = 0x800, mode = "constant", value = 1 }, { offset = 0x820, mode = "constant", value = 0 }]
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/50-imaging.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/50-imaging.toml
+new file mode 100644
+index 00000000..d38be773
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/50-imaging.toml
+@@ -0,0 +1,155 @@
++# Sensor communication block. The busy-bit reader 0x13597b8 (X-T5 0x1356788) builds
++# 0xff948204 (0x13597c8..0x13597cc) and reads it through 0x5de38 (0x13597d0); the start,
++# format and descriptor setters 0x1359780, 0x13597e8 and 0x1355540 and the packet senders
++# 0x2f7b2e0, 0x2f7b3dc and 0x2f7b5e4 match the X-T5's apart from relocations, and every
++# access they make is an aligned word the shared model accepts.
++[[device]]
++base = 0xff948000
++size = 0x1000
++kind = "imaging-sensor"
++[device.options]
++# Bring-up: the setup words +0x440..+0x480 and +0x4c0 read back their last write.
++retain_words = true
++# Functional scheduled latency per packet, not measured camera timing.
++command_latency_us = 1
++# The S1 contrast AF's fast readout, as on the X-T5: readout mode 0x117 selects row 96 of
++# the mode table 0x37adc08 (0x37ae808), whose register pairs include sensor register
++# 0x01 = 0x07 (0x3872690); lines are 432 clocks at 72 MHz. The AF frame period is
++# [0x4626838], set from 0x30f4434 (X-T5 [0x44a37d8] from 0x3032cfc).
++frame_timing_readout = 7
++frame_timing_line_ns = 6000
++
++# The other imaging windows are the X-T5's (xt5/4.31/xp5-boot/manifest.d/50-imaging.toml),
++# which adapts the X100VI's; the addresses are the XP5 SoC profile's (catalog/soc/xp5/soc.json).
++# Each X-H2 driver below uses the X-T5 counterpart's register offsets and poll bits.
++# Differences from the X-T5 fragment: no SSP3 sensor link at 0xff913000 (on the X-H2 that port
++# serves the hot shoe and stays unopened with the shoe empty, 32-gpio.toml).
++# Not checked against X-H2 hardware: the frame periods (33333 us), phase intervals, latencies
++# and synthetic luma are FujiMod's functional stand-ins, as on the X-T5.
++
++# Receivers. 0x136ef50/0x136efb0 read and write +0x0 of receiver n at (0xff940 + n) << 12
++# (0x136ef68); cause +0x108 (0x136fa94, 0x136fb84) and mask +0x10c (0x136fc18) repeat per
++# link at 0x100. Receiver 0 has two links, receiver 1 one (0x30ed0bc through 0x2f7cba0).
++[[device]]
++base = 0xff940000
++size = 0x1000
++kind = "imaging-receiver"
++[device.options]
++frame_period_us = 33333
++frame_active_us = 10000 # Functional phase interval; DMA completes after frame-end.
++
++[[device]]
++base = 0xff941000
++size = 0x1000
++kind = "imaging-receiver"
++[device.options]
++frame_period_us = 33333
++
++# Input engine. The REC check 0x30b978c calls 0x30f1d94 (X-T5 0x2ff7930 and 0x3030610),
++# which expects +0x17c bit 31 (0x2d330e4) set while +0x140 bit 0 (0x2d32c34) is clear.
++[[device]]
++base = 0xff946000
++size = 0x1000
++kind = "imaging-input"
++[device.options]
++idle_status = true
++# Bring-up: unmodeled aligned words read back their last write.
++retain_words = true
++
++# MOVDC channels 0..2. 0x13635a0 resets channel n at (0xff970 + n) << 12 (0x13635ac) and
++# polls +0x0 bit 0; 0x1364ff0 clears +0xd4 bit 28 and polls +0xdc bit 8; start is +0x4
++# bit 0 (0x1365d10, 0x1365dac); the diagnostic dump 0x2f4657c reads the retained words.
++[[device]]
++base = 0xff970000
++size = 0x1000
++kind = "movdc"
++[device.options]
++frame_period_us = 33333
++source_luma = 128
++retain_words = true
++
++[[device]]
++base = 0xff971000
++size = 0x1000
++kind = "movdc"
++[device.options]
++frame_period_us = 33333
++source_luma = 128
++retain_words = true
++
++[[device]]
++base = 0xff972000
++size = 0x1000
++kind = "movdc"
++[device.options]
++frame_period_us = 33333
++source_luma = 128
++retain_words = true
++
++# Second reset gate. 0x13635dc writes +0x0 = 0 and polls bit 0 (base 0x13635ec, poll
++# 0x1363608); 0x1365350 writes +0x4 bit 0. The stop poll of +0x30 bit 8 (0x1365c3c) and the
++# interrupt arm +0x3c (0x1365b78) have retention only.
++[[device]]
++base = 0xff973000
++size = 0x1000
++kind = "imaging-reset"
++[device.options]
++retain_words = true
++
++# Resize. 0x2d05ecc (X-T5 0x2c44ba4) sets +0x4c/+0x50 bit 16, then +0x4 bit 0; 0x2d05820
++# waits for +0x54 bits 0 and 16 (0x2d05854); the interrupt handler 0x2d0548c reads +0x58
++# and clears through +0x5c.
++[[device]]
++base = 0xff982000
++size = 0x1000
++kind = "imaging-resize"
++[device.options]
++completion_us = 1000 # Functional latency, not measured on hardware.
++retain_words = true
++
++# Phase AF. 0x2d11a90 (X-T5 0x2c50768) writes +0x0 = 0 and waits for bit 16 (base 0x2d11aa0,
++# poll 0x2d11abc); 0x2d12668 sets +0x300/+0x308 bit 8.
++[[device]]
++base = 0xff976000
++size = 0x1000
++kind = "imaging-paf"
++[device.options]
++retain_words = true
++
++# Preview. 0x135bb94 (X-T5 0x1358b64) polls +0x0 bit 0 and +0x504 bit 16 (0x135bbe8);
++# 0x135f4ec programs the output at +0x400/+0x404.
++[[device]]
++base = 0xff974000
++size = 0x1000
++kind = "imaging-preview"
++[device.options]
++frame_period_us = 33333 # Functional cadence, not measured sensor timing.
++source_luma = 128
++retain_words = true
++# The AF readers 0x30ac28c and 0x30a550c (X-T5 0x2fea380 and 0x2fe36e0's caller) read
++# planes 1, 0, 2 and 3, and 0x135cbf4/0x135cf68 program and decode the window words +0x7c
++# and +0x80 as on the X-T5. UNVERIFIED for the X-H2: the X-T5's coordinate calibration.
++focus_filters = true
++focus_window = true
++
++# RIFP I/O DMA. 0x2d132cc (X-T5 0x2c51f98) selects channel 1 register-list mode; the queue
++# appenders 0x13c2a74/0x13c2ab4 store 8-byte value and address entries in DRAM; START +0x40
++# (0x2d2fcc4), interrupt enable +0x44 and done +0x48 use bit 0.
++[[device]]
++base = 0xffd01000
++size = 0x1000
++kind = "imaging-rifp-io"
++[device.options]
++queue_completion_us = 5 # Functional latency, not measured on hardware.
++
++# RIFP and its retained sub-block pages 0xffd03000..0xffd0bfff. 0x2d13810 queues +0x4 = 1
++# and 0x2d143cc waits for +0x140 mask 0x101010 (0x2d14444); the interrupt handler 0x2d12b24
++# restarts in 0x500-line bands through 0x2d14640.
++[[device]]
++base = 0xffd02000
++size = 0xa000
++kind = "imaging-rifp"
++[device.options]
++completion_us = 1000 # Functional latency, not measured on hardware.
++source_luma = 128
++retain_words = true
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/51-imaging-reset.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/51-imaging-reset.toml
+new file mode 100644
+index 00000000..82fbe4c2
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/51-imaging-reset.toml
+@@ -0,0 +1,12 @@
++# Input reset gate at ff950000, the X-T5 and X100VI layout: 0x136612c (X-T5 0x13630fc)
++# writes +0x0 = 0 and polls +0x0 bit 0 until set (base 0x1366148, poll 0x136615c);
++# 0x1366170 (X-T5 0x1363140, from 0x2f7c8a8 and 0x2d2dec0) reads +0x4 (0x1366194), sets or
++# clears bit 0 and writes it back. The shared model owns only +0x0 and +0x4; the later block
++# registers (+0x8 from 0x1366208, +0x14/+0x18 from 0x1366e50) stay unmodeled.
++[[device]]
++base = 0xff950000
++size = 0x1000
++kind = "imaging-reset"
++[device.options]
++# Bring-up: the later block registers read back their last write, as on the X-T5.
++retain_words = true
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-imaging-phy.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-imaging-phy.toml
+new file mode 100644
+index 00000000..1397e969
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/52-imaging-phy.toml
+@@ -0,0 +1,11 @@
++# Receiver PHY at ff944000, the X-T5 and X100VI layout: 0x136d96c (X-T5 0x136a93c) writes
++# the control word +0x0 (bits 1 and 0) and 0x2f7dc14 (X-T5 0x2eb9ca8) polls +0x0 bit 0
++# through 0x136d9dc until it reads 1 (0x2f7dc48). The global words +0x4..+0xc have one
++# setter and one getter each (0x136da14..0x136db8c). Lane words +0x100..+0x148 repeat per
++# lane at 0x100 + n * 0x100, n < 4 (0x136dbd4..0x136ee00); the lane loops 0x2f7dd90,
++# 0x2f7e828, 0x2f7e8d0 and 0x2f7e9dc read a word, change fields and write it back. The
++# shared model stores these words and refuses all others.
++[[device]]
++base = 0xff944000
++size = 0x1000
++kind = "imaging-phy"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/53-imaging-buffer.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/53-imaging-buffer.toml
+new file mode 100644
+index 00000000..233fbc7b
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/53-imaging-buffer.toml
+@@ -0,0 +1,14 @@
++# IBUF, the imaging input buffer, the X-T5 layout (xt5/4.31/xp5-boot/manifest.d/49-gap-stubs.toml).
++# REC entry programs it from CPU1: 0x138d0e4 builds +0x14 at 0x138d144 and stores it through the
++# call at 0x138d14c. Open 0x138d938 (X-T5 0x138b9e0) clears +0x6c, clears +0x00 bit 0 through
++# 0x138c8c8 (0x138a970), waits without a timeout for bit 0 to read 1 in 0x138c834 (0x138a8dc,
++# poll at 0x138c850), re-arms and starts with +0x40 bit 0 (0x138c904). 0x138d490 (0x138b538)
++# registers the completion interrupt: descriptor 0x18ed5d0 (0x18eb0b8) begins with INTID 169;
++# the handler 0x138c880 (0x138a928) writes 1 to +0x6c through 0x138c860 (0x138a908).
++# completion_us is the X-T5's functional latency, not a measured transfer time.
++[[device]]
++base = 0xff945000
++size = 0x1000
++kind = "imaging-buffer"
++[device.options]
++completion_us = 8000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/54-movdc-tables.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/54-movdc-tables.toml
+new file mode 100644
+index 00000000..b34694e2
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/54-movdc-tables.toml
+@@ -0,0 +1,21 @@
++# MOVDC table pages, the X-T5's bring-up stubs (xt5/4.31/xp5-boot/manifest.d/49-gap-stubs.toml).
++# The MOVDC dispatcher 0x2d2f4f8 (X-T5 0x2c6e1c4) loads both pages from the descriptor
++# 0x18deb98 (0x18dc658) through the table writer 0x1373e84 (0x1370e54); the diagnostic
++# 0x2f1d748 (0x2e5888c) reads the groups back through 0x1373f30 (0x1370f00), so reads must
++# work. 0x1376568 (0x1373538) writes and 0x1376598 (0x1373568) reads +0xb30 bit 0 of the first
++# page (0xff96cb30 from 0x1376584).
++# Not a model: each register stores its last write and reads it back. Nothing here is checked
++# against hardware.
++[[device]]
++base = 0xff96c000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = []
++
++[[device]]
++base = 0xff96e000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = []
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/55-develop.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/55-develop.toml
+new file mode 100644
+index 00000000..7383448c
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/55-develop.toml
+@@ -0,0 +1,52 @@
++# Live-view develop blocks, the X-T5's (xt5/4.31/xp5-boot/manifest.d/57-develop-stubs-3.toml),
++# with the same offsets, poll bits and interrupt numbers. Completion delays are functional,
++# not measured.
++
++# Filter scaler. Driver 0x148e56c (X-T5 0x1488264) builds the base at 0x13c0f98; MOVDC starts
++# it from 0x2f740bc and 0x2f742f0 (0x2eafcc8, 0x2eafefc). Reset 0x148e638 (0x1488330) writes
++# +0x0 and polls bit 0; stop 0x148e988 (0x1488680) waits for +0x100 bits 24 and 8 (0x13c1940,
++# 0x13c1950); start 0x148e9e4 (0x14886dc) writes +0x04 = 1 and 0x148ea04 (0x14886fc) writes the
++# interrupt enable +0x10c = 7. The handler 0x148f6d0 (0x14893c8) reads +0x104 and acknowledges
++# 7 at +0x108. Logical interrupt 0xb is level INTID 204 (table 0x18ece30).
++[[device]]
++base = 0xff983000
++size = 0x1000
++kind = "imaging-filter-scaler"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x100, mode = "constant", value = 0x01000100 },
++]
++irq = 204
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x104, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x108, mode = "w1c", status_offset = 0x104, bits = 0x7 }
++irq_mask_offset = 0x10c
++irq_mask_bit = 0
++irq_mask_set_masks = false
++
++# MIX. Driver 0x2d07f48..0x2d0a7ec (X-T5 0x2c46c20..0x2c494c4); the MOVDC wrapper 0x2f732dc
++# (0x2eaeee8) opens, sets, starts and stops it. The setter writes +0x0c at 0x2d095d0 (base
++# 0xffd2200c from 0x2d095c8). Reset 0x2d08420 (0x2c470f8) writes +0x0 = 0 and polls bit 0;
++# start setup 0x2d08ec4 (0x2c47b9c) and stop 0x2d09088 (0x2c47d60) test +0x208 bits 16 and 0
++# (0x2d08edc); the last start write is +0x04 = 1 (0x2d09078). The handler 0x2d08474 (0x2c4714c)
++# acknowledges +0x210 = 1 without a status read. Logical interrupt 0x19 is level INTID 213.
++# A completion stub, not a model of the mixer.
++[[device]]
++base = 0xffd22000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++registers = [
++  { offset = 0x000, mode = "constant", value = 0x1 },
++  { offset = 0x208, mode = "constant", value = 0x10001 },
++]
++irq = 213
++starts = [{ offset = 0x04, mask = 0x1 }]
++delay_us = 200
++completion = [{ offset = 0x210, set = 0x1 }, { offset = 0x04, clear = 0x1 }]
++ack = { offset = 0x210, mode = "w1c" }
++irq_mask_offset = 0x20c
++irq_mask_bit = 0
++irq_mask_set_masks = false
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/60-mcore.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/60-mcore.toml
+new file mode 100644
+index 00000000..b70e5652
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/60-mcore.toml
+@@ -0,0 +1,18 @@
++# Companion mailbox (the SoC's `mailbox` block): main 0xff90e100..0xff90e120 is the
++# companion's 0x5f90e100..0x5f90e120 (main INTID 142, companion NVIC line 55). The main
++# initializer 0x13fb120 clears it and copies the companion image from flash 0xf01c0000
++# into the SRAM RAM region at 0xfa200000 before setting release bit 21 of 0xff90c928.
++[[device]]
++base = 0xff90e100
++size = 0x24
++kind = "interprocessor-mailbox"
++
++# USB cable/jig connection status in bit 0: OTG initialization 0x14fe42c (called from
++# 0x14fee74) latches it into 0x27303a4 and, only when it is set, reads controller
++# register 0xe and posts event 0x3046; 0x2cbc91c reads it with 0xffc0c70c, and
++# 0x2cbc8fc and 0x2f13144 read bit 0 alone. The default input is disconnected, as on
++# the X-T5 and X100VI.
++[[device]]
++base = 0xff90e300
++size = 4
++kind = "usb-connection-status"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/61-input-capture.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/61-input-capture.toml
+new file mode 100644
+index 00000000..387648eb
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/61-input-capture.toml
+@@ -0,0 +1,47 @@
++# Input-capture banks (the SoC's `capture0` and `capture1` blocks: five channels at
++# ff928000, three at ff929000, stride 0x20).
++[[device]]
++base = 0xff928000
++size = 0x1000
++kind = "input-capture"
++
++# Transmit DMA: the companion's capture object 0x319dc (returned by 0x2366c) names
++# channel 5. 0x237cc maps it to bank 1 index 0 (0x23684, 0x236b4) and returns its data
++# register 0x5f928004 + ((index + 128 * bank) << 5) = 0x5f929004, which the setup at
++# 0x3cde..0x3ce6 rebases to 0xff929004 as the destination of descriptor 2 (0x1ff0c(2) at
++# 0x3ca8): 0x31684 = [04 23 02 ...], channel 4 with request 35. The source is the table
++# at the driver state + 0x3c (local 0x340dc), 0xa4 bytes (0xa8 when the flag at 0xfa0ad
++# is set), built once by 0x3894 (0x3b32..0x3c7a) and submitted through 0x1ef84. The X-T5
++# and X100VI companions run the same routines on capture channel 2 (objects 0x323d0,
++# 0x37448) with descriptor [04 20 02 ...], request 32.
++[[device]]
++base = 0xff929000
++size = 0x1000
++kind = "input-capture"
++[device.options]
++dma_transmit = [{ channel = 0, request = 35 }]
++# IBIS stage position sensor behind capture channel 5. Every servo tick (0x1dd16) 0x3dc8
++# arms the capture interrupt and restarts the DMA of the 41-word table at 0x340dc; it is
++# the X-T5's table word for word apart from bits 31..29. Descriptor 0x45 of the table at
++# 0x31180 (0x3c9a..0x3ca2) names NVIC line 63 (0x315d0); handler 0x31f8 acknowledges
++# +0xc & 0x10001 and reads one capture from +0x10 per interrupt, the first carrying axes 0
++# and 1 (high, low), the second axis 2 (low), into 0x45b60..0x45b64. The servo linearizes
++# each raw sample as (raw - center) * gain >> 8 with centers 0x8000 (0xf6bb0) and gains
++# -256 (0xf6bb6), so 0x8000 is stage position zero. rest = 0: the stage held centered
++# while the body is still. latency_ns and lag_shift are the X-T5's scenario inputs, not
++# X-H2 measurements.
++[device.options.sequencer]
++channel = 0
++companion_irq_line = 63
++latency_ns = 20000
++center = [32768, 32768, 32768]
++rest = [0, 0, 0]
++lag_shift = 2
++# Coil drive: the servo stores its duty words 0xf6e74/78/7c (0x2ac14, 0x2aca8, 0x2ad44)
++# and writes them as the second compares of extended-timer channels 2, 4 and 0
++# (0x22e06..0x22e2e), whose first compares are 872 of period 1744 (0x22bfc..0x22c1e), as on
++# the X-T5. The servo's drive compensation (0x24de0) implies axis polarity +, +, -, the
++# X-T5's signs; the size is the X-T5's scenario input. Without the drive the stage cannot
++# follow the servo, whose command winds up to its limit.
++drive_channels = [2, 4, 0]
++drive_gain = [6, 6, -3]
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/62-companion-serial.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/62-companion-serial.toml
+new file mode 100644
+index 00000000..15583447
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/62-companion-serial.toml
+@@ -0,0 +1,65 @@
++# Companion serial controller: SSP instance 5 (the SoC's `spi5`). The companion's serial
++# setup at 0x3894 takes its instance from descriptor 0x316f8 (first word 5; the X-T5
++# companion's descriptor holds 1, its other words are the same) and builds
++# (instance + 0x5f910) << 12 + 8 and + 0xc at 0x38da..0x3902; 0x3864 then drains the
++# receive FIFO (status bit 2) through the data register.
++# The peers are the companion's two transfer routines, with the X-T5 command sets on
++# other chip selects: 0xc3c4 drives GPIO 0x000c0008 (port 12, pin 8) low around a
++# transfer and carries the BIS configuration sequence (09, 01 vv, 02 vv, 0b 05, 1c 4b,
++# reads a1/a2 storing the reply's low nibble, from 0x12446); 0xc430 drives 0x000c0009
++# (port 12, pin 9) low and its 18 callers send the LSM6DS-class register writes. The parts
++# are the existing explicit models; revision nibbles and idle MISO are the X-T5's
++# inherited scenario inputs, not X-H2 measurements. source_hz is the X-T5 value,
++# UNVERIFIED.
++# Interrupt output: the SSP setup 0x20ce4 unmasks all four interrupts (+0x14 = 0xf at
++# 0x20da2), but the companion never enables an NVIC line for this instance. Its only
++# NVIC enable 0x2e90 is reached only through the handler attach 0x1e160 (via 0x24738),
++# whose eight callers take their line from the interrupt table 0x31180: the mailbox (55,
++# 0x38be), entries 1 (58, 0x3022), 0x43 (0, 0x1ec1e) and 0x45 (63, the input-capture
++# handler 0x31f9 at 0x324a and 0x3dda), the DMA channel lines (83 + channel, map 0x3162c;
++# 0x1e42c, 0x1e57c) and the channel lines of the 0xff908000 block (map 0x3185c; 0x21aae).
++# No pending-register (ISPR) read exists, so the raised output is not observable by this
++# firmware and is declared unconnected. Which NVIC line the silicon wires it to is
++# unknown, UNVERIFIED.
++# DMA requests: the companion's channel descriptors 0x3166c + 12 * i (lookup 0x1ff0c) are
++# [channel, request, ...]: 0a 0b (channel 10, transmit, request 11) and 0b 0a (channel 11,
++# receive, request 10); the DMA start 0x1f8a4 passes byte 1 to the routing writer 0x1f770,
++# which stores it at 0xff90e500 + 4 * (channel >> 1). The transmit channel writes this
++# instance's data register +8. The X-T5 companion's SSP1 descriptors 0x32060/0x3206c
++# hold requests 3/2 on the same channels, so instance n uses 2n (receive) and 2n + 1.
++[[device]]
++base = 0xff915000
++size = 0x1000
++kind = "pl022"
++[device.options]
++source_hz = 48000000
++ticks_per_second = 1000000000
++receive_request = 10
++transmit_request = 11
++companion_irq_unconnected = true
++[device.options.wire]
++kind = "gpio-selected"
++[[device.options.wire.endpoints]]
++[device.options.wire.endpoints.select]
++port = 12
++pin = 8
++active_high = false
++[device.options.wire.endpoints.part]
++kind = "bis-configuration-registers"
++revision = [0, 0]
++samples = [0, 0]
++idle_high = false
++# A body at rest: the 0a..0f block (command 8a) reads zero, as before it became
++# a declared input.
++block = [0, 0, 0, 0, 0, 0]
++[[device.options.wire.endpoints]]
++[device.options.wire.endpoints.select]
++port = 12
++pin = 9
++active_high = false
++[device.options.wire.endpoints.part]
++kind = "lsm6ds-configuration-registers"
++temperature = 0
++# A still body: zero angular rate and acceleration (the model main read before
++# motion became a declared input).
++motion = { angular_rate = [0, 0, 0], acceleration = [0, 0, 0] }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/63-power-gates.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/63-power-gates.toml
+new file mode 100644
+index 00000000..df2c4089
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/63-power-gates.toml
+@@ -0,0 +1,14 @@
++# Power-gate bank (the SoC's `power-gates` block, declared as on the X-T5 and X100VI).
++# The domain switch 0x13af35c calls the latch writer 0x13b0088, which stores 0 or 1 to
++# +0x510 only (0x13b009c..0x13b00bc), between clock-gate adapter calls (0x13ad7e0 bank
++# 0xc = 0xff90c330, 0x13ad514 bank 0x11 = 0xff90c944, tables 0x18f4718/0x18f4688) and
++# the bus poll 0x13ad8dc (0xffa1b0f0 bit 0); it then clears or sets bits 0x700 of +0xb1c
++# and polls +0xb3c until they follow. The other gate users name +0xb00..+0xb10 with
++# status +0x20 above (e.g. 0x13a1630 +0xb10/+0xb30, 0x13c3a0c +0xb08/+0xb28), +0xb44/+0xb64
++# (0x13ca184) and +0xb50/+0xb70 (0x148f674, 0x14900b0, not modeled: they still refuse).
++# The shared model's latches start zero (session assumption); +0x510's effect is not
++# modeled (UNVERIFIED meaning).
++[[device]]
++base = 0xff90d000
++size = 0x1000
++kind = "power-gates"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/64-memory-configuration.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/64-memory-configuration.toml
+new file mode 100644
+index 00000000..5ffffdb0
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/64-memory-configuration.toml
+@@ -0,0 +1,38 @@
++# Memory-parameter banks (the shared `memory-configuration` model, declared as on the
++# X-T5 and X100VI). The register-list writer 0x13afffc(group, mode) takes the list for
++# mode (< 11) and group (< 4) from table 0x18ff130 ([count, list] rows of 16 bytes),
++# stores every [address, value] pair through 0x5de10 and then reads the last address
++# through 0x5de38 until it returns 0 (0x13b0048..0x13b006c). All 44 lists hold 114
++# pairs on one bank 0xfaf05000 + 0x10000 * group: 113 parameter words (+0x000, +0x200,
++# +0x400, +0x500 and +0x800, each 22 words to +0x54, and +0x900..+0x908) followed by
++# 1 to +0x704. The power-up path 0x13af5a0 writes mode 10 to every group whose bit
++# (0x18ff198: 1, 2, 4, 8) is set in 0x18f49f4 (0xf) from 0x13af75c; 0x13af778 and
++# 0x13afbe8 are the other callers. The commit latency is the siblings' functional
++# value, not a camera measurement (UNVERIFIED).
++[[device]]
++base = 0xfaf05000
++size = 0x1000
++kind = "memory-configuration"
++[device.options]
++commit_ticks = 1000
++
++[[device]]
++base = 0xfaf15000
++size = 0x1000
++kind = "memory-configuration"
++[device.options]
++commit_ticks = 1000
++
++[[device]]
++base = 0xfaf25000
++size = 0x1000
++kind = "memory-configuration"
++[device.options]
++commit_ticks = 1000
++
++[[device]]
++base = 0xfaf35000
++size = 0x1000
++kind = "memory-configuration"
++[device.options]
++commit_ticks = 1000
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/65-configuration-groups.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/65-configuration-groups.toml
+new file mode 100644
+index 00000000..18cb8c15
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/65-configuration-groups.toml
+@@ -0,0 +1,229 @@
++# Configuration group words (the SoC's configuration_group<n>_words20/40 windows, as in
++# the xp5 hardware profile). The only writer is 0x13b0978(group, mode), called from the
++# power-up path 0x13af778 at 0x13afa68 with mode 0 for every group (< 4) whose bit is set.
++# For each of the 22 bank offsets in table 0x18f4a38 (0, 0x200, ... 0x2a00; count
++# 0x18f4a90) it stores two words through 0x5de10: mode 0 (table 0x18f4ad8) writes 0 to
++# +0x40 + 4 * group and then 1 to +0x20 + 4 * group (0x13b09fc..0x13b0a2c); mode 1
++# (table 0x18f4a98, no static caller) writes 0x80 * group to +0x20 + 4 * group and
++# 0x80 * group + 0x7f to +0x40 + 4 * group. 0x13b0978 holds the only references to
++# 0xfae00000 and nothing reads these words, so each bank declares only +0x20..+0x2c and
++# +0x40..+0x4c; the rest of the 0x200 stride still refuses. Meaning UNVERIFIED.
++[[device]]
++base = 0xfae00020
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00040
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00220
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00240
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00420
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00440
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00620
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00640
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00820
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00840
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00a20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00a40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00c20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00c40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00e20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae00e40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01020
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01040
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01220
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01240
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01420
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01440
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01620
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01640
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01820
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01840
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01a20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01a40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01c20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01c40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01e20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae01e40
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02020
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02040
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02220
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02240
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02420
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02440
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02620
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02640
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02820
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02840
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02a20
++size = 0x10
++kind = "write-only-registers"
++
++[[device]]
++base = 0xfae02a40
++size = 0x10
++kind = "write-only-registers"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/66-usb.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/66-usb.toml
+new file mode 100644
+index 00000000..3e1bfcae
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/66-usb.toml
+@@ -0,0 +1,54 @@
++# USB device controller and PHY of the X-H2 5.30 ff80 driver (0x2cbb774..): the same DesignWare
++# USB3 core, indexed USB2 PHY port, PHY/PLL control and completion stub as the X-T5 4.31
++# fragment, which this one copies at the SoC addresses. The driver's speed getter 0x2cbc91c
++# reads the shared `usb-connection-status` word and classifies 0xffc0c70c & 7, as the X-T5's
++# 0x2bfcd0c does. The interrupt number and the PHY/PLL control words are the X-T5's and are not
++# yet checked against this image's interrupt table.
++
++[[device]]
++base = 0xffc00000
++size = 0x10000
++kind = "usb-device-controller"
++[device.options]
++interrupt = 283
++speed = 0
++command_ticks = 1000
++transaction_ticks = 125000
++
++# Indexed USB2 PHY port, the XP4 protocol (X-T3 0xffb23800): index[12:8],
++# data[7:0], write strobe = rising edge of bit 16, readback at +0x400 (helper
++# 0x2bfae38). The parallel word at +0x04 is read-modify-written with masks
++# 0x70 (0x2bfc2f8) and 0x1 (0x2bfc310). Initial values are unknown; zeros.
++[[device]]
++base = 0xffc23800
++size = 0x404
++kind = "usb-phy"
++
++# ---------------------------------------------------------------------------------------------
++# Bring-up stubs, NOT models (same status as 49-gap-stubs.toml). The ff80 device init 0x2bfbb68
++# calls 0x13391f8(mode) at 0x2bfbd1c (also called by the host side, 0x14bcb5c). It toggles clock
++# gate bit 0x27 of 0xff90c918, then:
++#   0xffc10c08 |= 5                         (USB glue word; read-modify-write)
++#   0xffc30010 |= 0x10; 0xffc30008 = 0xffff (status clear); 0xffc30004 = 0x1003;
++#   0xffc30014 = mode word (bits 1:0 = 1, bit 2 = mode == 1, bit 4 set, bit 3 clear);
++#   poll 0xffc30008 until bits 1:0 != 0; bit 0 -> success, then 0x13391a8(1) sets
++#   0xffc30040 bits 3:0 = 0b0101 (0x13391a8(0) clears them on unplug).
++# The real block (a USB PHY/PLL control, unidentified; X100VI peripherals.md lists 0xffc10000 and
++# 0xffc30000 as unmodeled) is unknown. The completion below only answers the poll: the write of
++# +0x14 with bit 4 set "starts", and 100 us later +0x08 bit 0 is set; +0x08 is write-one-to-clear.
++[[device]]
++base = 0xffc10000
++size = 0x1000
++kind = "bringup-stub"
++[device.options]
++registers = []
++
++[[device]]
++base = 0xffc30000
++size = 0x1000
++kind = "completion-stub"
++[device.options]
++starts = [{ offset = 0x14, mask = 0x10 }]
++delay_us = 100
++completion = [{ offset = 0x08, set = 0x1 }]
++ack = { offset = 0x08, mode = "w1c", bits = 0x1 }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/67-reset-handshake.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/67-reset-handshake.toml
+new file mode 100644
+index 00000000..3e13ebc7
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/67-reset-handshake.toml
+@@ -0,0 +1,14 @@
++# Reset handshake word (the shared `reset-handshake` model, declared as on the X-T5 and
++# X100VI). 0x1490798, called from 0x1492e30, calls 0x13ad210(0, 0x7f0003), stores 1 to
++# 0xff91c01c through 0x5de10 (0x14907b4..0x14907c0) and reads the same word through
++# 0x5de38 until it returns 0 (0x14907c4..0x14907d4); the X-T5's 0x148a854 has the same
++# sequence. Immediate completion is the siblings' functional assumption, not a camera
++# measurement (UNVERIFIED). The other routines that address this page (0x138aae0,
++# 0x138ab70, 0x138ac5c, 0x138acf8, 0x138ad34 and 0x138af98: instance 0 of a controller at
++# 0xff91c000 + 0x75000 * n, registers +0x4 to +0x28) are not modeled and keep refusing.
++[[device]]
++base = 0xff91c000
++size = 0x1000
++kind = "reset-handshake"
++[device.options]
++trigger_offset = 0x1c
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/68-audio-serial.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/68-audio-serial.toml
+new file mode 100644
+index 00000000..39da420b
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/68-audio-serial.toml
+@@ -0,0 +1,23 @@
++# SSP instance 8 (0xff910000 + 8*0x1000) carries the audio codec. Client 2 of the serial
++# descriptor table (lookup 0x137f2a8: 0x18ea120 + 0x30*n, n < 0x22) is 0x18ea180 =
++# [8, 0x000f000b, 0, 0, 0x18, ..., 0x10]: instance 8, select GPIO 15.11 active-low, mode
++# 0, prescaler 0x18, 16-bit words. The X-T5's client 2 (0x18e7c40) has the same fields
++# on instance 4 and select 12.7. Its only user 0x1490cac is the X-T5 codec driver
++# 0x148ad68 one-to-one (GPIO 15.3/15.4/15.5 for 12.0/12.1/12.2): one select period
++# carries a command word and a data word, bit 15 of the command marks a read whose
++# second reply is kept. Its callers are the stock task `audio` (task 0x43, name at
++# 0x19a2348, created by 0x1494f04 with entry 0x1492e30), which after the reset handshake
++# writes 12 pairs from 0x19a63e8 and 4133 from 0x19a2350, none with bit 15.
++# The codec part is not identified, so this is FujiMod's write-only command/data register
++# endpoint as on the X-T5: writes are retained and a read is refused because the reply
++# is unknown. MISO during writes is discarded by the driver; miso_high = false is
++# UNVERIFIED. source_hz is the X-T5 and X100VI value, UNVERIFIED.
++[[device]]
++base = 0xff918000
++size = 0x1000
++kind = "spi-controller"
++[device.options]
++source_hz = 48000000
++[[device.options.endpoints]]
++select = { port = 15, pin = 11, active_high = false }
++part = { kind = "serial-command-registers", bits = 16, mode = 0, read_flag = 0x8000, data_words = 1, miso_high = false }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/69-lz.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/69-lz.toml
+new file mode 100644
+index 00000000..d7b0c935
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/69-lz.toml
+@@ -0,0 +1,20 @@
++# Lazy-code/font streaming DMA and conversion block (the SoC's `lz` block, the shared
++# `lz` model, declared as on the X-T5 and X100VI). 0x13a1630 powers it (gate 0xff90db10
++# bit 3, polled at 0xff90db30) and runs the reset handshake 0x13a1928 (write 0 to +0x00,
++# wait for nonzero, then for +0x24 == 0x10001), the X-T5's 0x139f9d0 word for word.
++# The stream setup 0x13a1978 (+0x40 = 0, address-high 0xff90e70c, +0x10..+0x1c, then
++# +0x20 = 0x84000400 and 0x94001400) and the page start 0x13a1a20 (address-high
++# 0xff90e708, +0x08, +0x0c, +0x04 = 1) equal the X-T5's 0x139fa20 and 0x139fac8; the
++# acknowledge words are +0x28 (0x13a1a80) and +0x68 (0x13a1acc, 0x148523c). The OSD
++# converter 0x14853a0 (reset 0x14852c8 polls +0x64 for 0x1010001) programs +0x40 = 1,
++# +0x48..+0x54 and +0x58/+0x5c/+0x60 = 0x400/0x4000400/0x1010001 before starting +0x44.
++# These are all the image's accesses to the page. The handlers 0x13a1538 and 0x148528c
++# attach to interrupt descriptors 0x8a (0x13a1734) and 0x71 (0x1485474) of the table
++# 0x18ece30 (lookup 0x13a137c); entries 0x18ed6d0 and 0x18ed540 both name INTID 201
++# (0xc9), the line the model raises. The model
++# also owns the address-high words 0xff90e708/e70c. Completion timing is the model's
++# functional assumption, not a camera measurement (UNVERIFIED).
++[[device]]
++base = 0xff980000
++size = 0x1000
++kind = "lz"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/70-renderer.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/70-renderer.toml
+new file mode 100644
+index 00000000..afddf0be
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/70-renderer.toml
+@@ -0,0 +1,20 @@
++# SMAPH-H/OpenVG command renderer (the SoC's `renderer` block, the shared `renderer`
++# model, declared as on the X-T5 and X100VI). 0x15e76d8 sets the base word 0x27ac820 to
++# 0xff93c000 and read-modify-writes, through 0x15e74b4 (read helper 0x15e7470), +0x18c0,
++# +0x10c0, +0x10c4 = 0xffffffff, +0x1800, +0x1000, +0x1020 = 0, +0x1880, +0x10a0 =
++# 0x12345678, +0x18c0, +0x10c4 = 0xfffffff0, +0x1248 = 1, +0xc18, +0x1c = 0: the X-T5's
++# 0x15ddd0c sequence. The handler 0x15e7568 reads status +0x34 and acknowledges bit 31
++# (+0x1800, +0x1020), bit 30 (+0xc18) and bit 26 (+0x1c); 0x15e7684 attaches it to
++# interrupt descriptor 0x92 of the table 0x18ece30 (lookup 0x13a137c), whose row
++# 0x18ed750 names INTID 153 (0x99), the line the model raises. The driver
++# 0x15e7470..0x15e7e33 is the X-T5's 0x15ddaa4..0x15de467 instruction for instruction
++# apart from relocated global offsets; the register accessors 0x15e786c/0x15e7880 are
++# the only other callers of the helpers. The model also owns the address-high word
++# 0xff90e73c, which 0x147eb38 sets to bits 34..32 of the draw buffer around each draw
++# and clears afterwards, and 0x147e6c4 clears (the X-T5's 0x1478854 and 0x14783e0);
++# nothing else on the X-H2 declares it. DMA latency and the pixmap readback channel
++# order are the model's assumptions, not camera measurements (UNVERIFIED).
++[[device]]
++base = 0xff93c000
++size = 0x3000
++kind = "renderer"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/71-display.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/71-display.toml
+new file mode 100644
+index 00000000..1ecfddf8
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/71-display.toml
+@@ -0,0 +1,48 @@
++# Display pixel-clock PLLs, declared as on the X-T5 and X100VI; they replace four banks
++# of 26-clock-banks.toml. The PLL base table 0x18f4638 (four-byte rows) holds
++# 0xffa11000..0xffa14000 at indices 6..9, the X-T5 table 0x18f2138's layout. The
++# programmers 0x1424664 and 0x1424730, the setup 0x1424874 and the pixel-clock query
++# 0x1424e14 are the X-T5's 0x141ed3c, 0x141ee08, 0x141ef4c and 0x141f4ec instruction for
++# instruction apart from immediates, and 0x1420c14 and 0x14211a4 call the setup before
++# the display reset (0x1420c34 before 0x1420cd4, 0x1421460 before 0x1421734). The N and
++# divider values come from the configuration the stock code reads, not from this file.
++[[device]]
++base = 0xffa11000
++size = 0x1000
++kind = "panel-pll"
++[[device]]
++base = 0xffa12000
++size = 0x1000
++kind = "panel-pll"
++[[device]]
++base = 0xffa13000
++size = 0x1000
++kind = "panel-pll"
++[[device]]
++base = 0xffa14000
++size = 0x1000
++kind = "panel-pll"
++
++# Display controllers, the X-T5 and X100VI windows and kind. 0x1433b04(n) resets
++# controller n (write 0 to +0x00 through 0x5de10, poll bit 0 through 0x5de38) at
++# 0xff990000 (n = 0) or 0xff9a0000 (n = 1); the status snapshot 0x1431a18 (called from
++# 0x14203f8) reads +0x08 first (0x1431ad4..0x1431adc). The driver is the X-T5's:
++# 0x1433b04, 0x1431a18, 0x142acd4, 0x142ad10, 0x142adb4, 0x142c074, 0x142c9a8,
++# 0x143b04c, 0x143b664 and 0x143b694 match 0x142dfa8, 0x142bebc, 0x1424c0c, 0x1424c48,
++# 0x1424cec, 0x1425fac, 0x14268e0, 0x14354e8, 0x1435b00 and 0x1435b30 instruction for
++# instruction; 0x143302c, 0x14336e0 and 0x143b6c4 differ only in global offsets; the
++# panel configuration 0x1436380 (0x1430824) writes the same offsets with this body's
++# panel constants. Every offset the image reads or writes in both windows
++# (+0x04..+0x7d0) is one the model accepts. 0x143e2ac attaches the handlers through
++# descriptors 0x8f, 0x90, 0x8d (controller 0) and 0x8b, 0x8c, 0x8e (controller 1) of
++# the table 0x18ece30 (rows 0x18ed6e0..0x18ed730): INTIDs 177, 178, 183 and 186, 187,
++# 192, the lines the model raises. The scanout geometry comes from the registers the
++# stock code programs.
++[[device]]
++base = 0xff990000
++size = 0x1000
++kind = "display"
++[[device]]
++base = 0xff9a0000
++size = 0x1000
++kind = "display"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/72-update-uart.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/72-update-uart.toml
+new file mode 100644
+index 00000000..68259969
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.d/72-update-uart.toml
+@@ -0,0 +1,32 @@
++# UART port 0, an Arm PL011 at 0xff920000, for the stock firmware update program. The first
++# write the X-H2 5.30 update run made there is CR (+0x30) = 0 from the serial driver's port
++# setup (store from PC 0x5de10, the call at 0x1385974). The normal boot to REC never touches
++# the port.
++#
++# The X-H2 driver is the X-T5's (manifest of xt5-431, 65-uart.toml), checked by masked
++# instruction sequences: UART open 0x1383ba4 (X-T5 0x1381c10), register setup 0x13858e8
++# (0x1383954), divisors 0x1385300 (0x138336c), RL78 frame transfer 0x13d72b8 (0x13d4e8c),
++# frame builders and reply check 0x13d77e0/0x13d7628/0x13d7470/0x13d6694 (0x13d53b4/0x13d51fc/
++# 0x13d5044/0x13d484c), programming sequence 0x13d95b0 (0x13d766c; only GPIO pin ids differ),
++# install function 0x2e8d9c0 calling it at 0x2e8db68 (0x2dcb9c4; error 7 at 0x2e8eafc).
++# The serial configuration table 0x18eb4a0 and the interrupt records 0x18ece30 are byte-identical
++# to the X-T5's: port 0 at 115200, INTIDs 293..296.
++#
++# The peer is the virtual Renesas RL78 Protocol A programming target. What the program checks
++# in its replies: every frame starts 02, has the expected length, ends 03 or 17 with a correct
++# checksum; every status is 06 (a blank check may answer 1b, which makes it send an erase);
++# signature bytes 13..15 (code-flash end address) pick the image whose size is end + 1. Never
++# checked: the baud-set reply fields and the other signature bytes (device code, data-flash end,
++# version). Which size the real part reports is UNVERIFIED. The X-H2 update carries a 64 KiB and
++# a 48 KiB RL78 image (header entries 0 and 1); this declaration's 48 KiB flash selects the
++# 48 KiB one, an assumption carried over from the X-T5, not read from a camera. The program
++# also drives GPIO pins the X-T5's does not (0xa0004, and 0xa0005 where the X-T5 uses 0xf0002);
++# their roles are UNVERIFIED. The interrupt INTID 293 is the SoC's UART 0 as in the X-T5 table.
++[[device]]
++base = 0xff920000
++size = 0x1000
++kind = "pl011"
++
++[device.options]
++irq = 293
++rl78 = { flash_bytes = 0xc000 }
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/manifest.toml b/catalog/firmware/xh2/5.20/xp5-boot/manifest.toml
+new file mode 100644
+index 00000000..636127ba
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/manifest.toml
+@@ -0,0 +1,80 @@
++# Cold OS boot: EL3 -> EL1t handoff at 0x5847c, after stock 0x58420..0x58478
++# (the X-T5 4.31 kernel shape; loader tail 0x2318..0x232c passes x0 = [0x13008] =
++# 0x14e1c4c and x1 = 0x18250).
++version = 1
++firmware = "xh2-520"
++load_firmware = true
++# Host execution only: the companion computes (the IBIS servo's 16 kHz sample frames) far
++# more than it waits in delay loops, so it runs in block execution. The guest state is the
++# same either way.
++mprofile_block_execution = true
++
++# Device windows: manifest.d/*.toml, merged in filename order.
++
++# The body's DRAM extent: the stock bus-drain classifier 0x14d1a1c splits memory at
++# 0x80000000 (body hardware.bus_drain). PROVISIONAL: installed capacity is unmeasured.
++[[ram]]
++base = 0
++size = 0x80000000
++
++# The firmware uses DRAM past the body's 0x80000000: the still subject-detection arena is
++# 0x80001000+0x13ff000 (0x2e1f63c; the AI task 0x2ea34d8 clears 0x10c1000 bytes of it,
++# 0x2ea367c). The DDR setup 0x13af5a0 maps the four regions of the table 0x18f49f8 (mask
++# 0xf at 0x18f49f4): 0+0x80000000, 0x80000000+0x70000000, 0x100000000+0x80000000 and
++# 0x180000000+0x80000000. The drain helper's 0x80000000 read (0x14d1c44) therefore reads
++# RAM, as the X-T5's slot 1 does; the body's drain peripheral moves past the last region
++# only so that it does not overlap RAM. Installed capacity is unmeasured; the two regions
++# above 4 GiB are not declared until the firmware reaches them.
++[dram]
++limit = 0xf0000000
++bus_drain = 0x200000000
++
++[[ram]]
++base = 0x80000000
++size = 0x70000000
++
++# Companion SRAM, main view (the SoC's companion-sram region): 0x13fb120 copies the
++# companion image from flash 0xf01c0000 to 0xfa200000 and the shared configuration
++# lies at 0xfa2fa000..0xfa300000. Before that, the interrupt-configuration helper
++# 0x5dcd0 read-modify-writes 0xfa270e00 for INTIDs 0xf0..0xff.
++[[ram]]
++base = 0xfa200000
++size = 0x100000
++
++# Boot SRAM, 256 KiB. The SoC profile maps it only for ROM and SD starts, but the application
++# keeps the AE statistics banks here, as the X-T5 does: the AE setup 0x2f50bbc (X-T5 0x2e8c6b8)
++# stores the bank pointers 0xff800000 and 0xff8075a0 (0x2f50bf8, 0x2f50c00) with 0x75a0 bytes
++# each, 0x2f79de0 (0x2eb5e74) sets four planes 0x400 apart from 0xff80eb40 (0x2f79de8), and
++# 0x2eec5c4 (0x2e2943c) increments the counter 0xff82c008. The statistics model writes its
++# frames into this RAM.
++# DDR PHY register and firmware space, RAM as on the X-T5 (xt5/4.31 manifest.toml): the firmware
++# stores halfword PHY registers at 0xfb000000 / 0xfb400000 + 2 * APB index. The interactive run
++# of a half press stopped at write2 0xfb440120 (CPU0 PC 0x5de1c, LR 0x13bd4ec, the training drain
++# of 0x13bd764); the SD card start's stock setup also writes them (card-handoff.toml, 2026-11-23).
++# The mailbox pages above each region are the stubs of manifest.d/48-ddr-phy.toml. Plain RAM
++# is the X-T5's model; the X-H2's register meanings are UNVERIFIED.
++[[ram]]
++base = 0xfb000000
++size = 0x1a0000
++
++[[ram]]
++base = 0xfb400000
++size = 0x1a0000
++
++[[ram]]
++base = 0xff800000
++size = 0x40000
++
++# The SD slot (host 0xff9b0000, 25-sd.toml) is empty. The format describes the volume a
++# run that inserts a card without an image would see; it is unused while the slot is empty.
++[[sd]]
++base = 0xff9b0000
++present = false
++protected = false
++files = []
++[sd.format]
++sectors = 0x3b9e000
++max_dirty_sectors = 65536
++partition_start = 8192
++sectors_per_cluster = 64
++label = "NO NAME"
+diff --git a/catalog/firmware/xh2/5.20/xp5-boot/streams.toml b/catalog/firmware/xh2/5.20/xp5-boot/streams.toml
+new file mode 100644
+index 00000000..559f5516
+--- /dev/null
++++ b/catalog/firmware/xh2/5.20/xp5-boot/streams.toml
+@@ -0,0 +1,26 @@
++update_sha256 = "46c2a30f12e192d341f6786f312eb655f0266c52ef54ce0f21662c6f663875c8"
++verification = []
++
++[[sections]]
++name = "loader-00060274"
++address = 262144
++size = 123712
++dat_offset = 393844
++encoding = "raw"
++sha256 = "a73aee09924485ab65ba9b2747488403aced37b576378b1a2d1cc951fa5d80db"
++
++[[sections]]
++name = "stream-00300274"
++address = 17829888
++size = 11938472
++dat_offset = 3146356
++encoding = "method4"
++sha256 = "73d10e660a872e2f9c30a27bfc3758443b89260adb76b997bc0ecf4fb287f5dd"
++
++[[sections]]
++name = "stream-00840274"
++address = 43200512
++size = 15151104
++dat_offset = 8651380
++encoding = "method4"
++sha256 = "5d5688a680dc1d17e7d1dfc3da27c8419abd2232d4e6d7ecafebfd2d6f93d68b"
+diff --git a/configurations/emulator/xh2-520/run.json b/configurations/emulator/xh2-520/run.json
+new file mode 100644
+index 00000000..1ed14e92
+--- /dev/null
++++ b/configurations/emulator/xh2-520/run.json
+@@ -0,0 +1,73 @@
++{
++  "$schema": "https://fujimod.com/schemas/emulator-run-configuration.schema.json",
++  "schema": 1,
++  "id": "xh2-520",
++  "purpose": "rom_boot",
++  "body_id": "xh2",
++  "firmware_id": "xh2-520",
++  "start": {
++    "kind": "loader"
++  },
++  "execution": {
++    "mode": "strict",
++    "engine": "hypervisor",
++    "quantum": 1000,
++    "instructions_per_tick": {
++      "numerator": 1,
++      "denominator": 1
++    }
++  },
++  "inputs": {
++    "kind": "xp5",
++    "ticks_per_second": 1000000000,
++    "blocks": [
++      {
++        "kind": "adc",
++        "block_id": "adc",
++        "samples": [
++          2713,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095,
++          4095
++        ]
++      },
++      {
++        "kind": "flash",
++        "block_id": "flash-aperture",
++        "part_id": "xh2-serial-nor",
++        "source": "firmware_update",
++        "erased_tail": 255,
++        "seeds": []
++      }
++    ],
++    "parts": [],
++    "timings": [],
++    "ladders": []
++  },
++  "scene": {
++    "kind": "xp5",
++    "frames": [],
++    "statistics": [],
++    "command_images": []
++  },
++  "overlays": [],
++  "preset": {
++    "factory_options": {},
++    "hardware_selection": {
++      "soc_profile_id": "xp5",
++      "body_profile_id": "xh2"
++    },
++    "firmware_profile_id": "xh2-520"
++  }
++}
+\ No newline at end of file
+-- 
+2.54.0 (Apple Git-157)
+

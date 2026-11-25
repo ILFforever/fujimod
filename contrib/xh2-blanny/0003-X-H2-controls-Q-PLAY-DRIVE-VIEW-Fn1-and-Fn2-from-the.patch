@@ -1,7 +1,7 @@
-From 68911cb51e9ddd7caa738b5271b87d4e4ef99c7f Mon Sep 17 00:00:00 2001
+From 053f328cc5b09a69dab661742f36fda4e3a4d824 Mon Sep 17 00:00:00 2001
 From: ILFforever <hammymukura@gmail.com>
 Date: Wed, 25 Nov 2026 15:41:34 +0700
-Subject: [PATCH] X-H2 controls: Q, PLAY, DRIVE, VIEW, Fn1 and Fn2 from the
+Subject: [PATCH 3/4] X-H2 controls: Q, PLAY, DRIVE, VIEW, Fn1 and Fn2 from the
  5.20 key readers
 
 - Q: a rung on the ADC 6 ladder, 3103..3776 (reader 0x13fe8b8, scanner row 27).
