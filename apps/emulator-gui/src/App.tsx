@@ -7,7 +7,7 @@ import { LoadingAssets } from '@fujimod/emulator-ui/LoadingAssets';
 import type { EngineConfig } from '@fujimod/emulator-ui/engine/api';
 import { faultFrom } from '@fujimod/emulator-ui/engine/fault';
 import { shownError } from '@fujimod/emulator-ui/ui/shown-error';
-import { nativePanel } from './panel';
+import { mainScreen, nativePanel, otherScreens, type MainScreen, type OtherScreen } from './panel';
 import { RemoteEngine } from '@fujimod/emulator-ui/engine/remote';
 import type { NativeCamera, NativeCatalog, NativeSessionState } from './native';
 import type { BootChoice, LauncherCamera, LaunchRequest } from './launch';
@@ -26,6 +26,10 @@ export default function App() {
   const [launcherError, setLauncherError] = createSignal('');
   const [pageError, setPageError] = createSignal('');
   const [busy, setBusy] = createSignal(false);
+  const [screens, setScreens] = createSignal<OtherScreen[]>([]);
+  const [viewfinderLive, setViewfinderLive] = createSignal(false);
+  let viewfinder: HTMLCanvasElement | undefined;
+  let split: MainScreen | undefined;
   const [runtime, setRuntime] = createSignal<ReturnType<typeof startSession>>();
   let viewer!: HTMLDivElement, lcd!: HTMLCanvasElement;
   let engine: RemoteEngine | undefined;
@@ -50,6 +54,22 @@ export default function App() {
     });
     void photo.open().catch((error) => session.showFault(faultFrom(error)));
     engine = photo;
+    // The X-H2 draws its rear LCD and its viewfinder through one output and
+    // switches the size: a frame at the main LCD size goes to the LCD view,
+    // any other size (the viewfinder, 1600x1200) to the viewfinder tile.
+    const receive = photo.frames.bind(photo);
+    photo.frames = (listener) =>
+      receive((frame) => {
+        if (!split || !('bitmap' in frame) || (frame.width === split.width && frame.height === split.height))
+          return listener(frame);
+        if (!viewfinder) return;
+        if (viewfinder.width !== frame.width || viewfinder.height !== frame.height) {
+          viewfinder.width = frame.width;
+          viewfinder.height = frame.height;
+        }
+        viewfinder.getContext('2d')?.drawImage(frame.bitmap, 0, 0);
+        setViewfinderLive(true);
+      });
     let catalog: NativeCatalog | undefined;
     let nativeState: NativeSessionState | undefined;
     let sessionInitialized = false;
@@ -89,6 +109,8 @@ export default function App() {
       const controls = metadata?.controls as PhysicalControls | undefined;
       if (!metadata || !controls) throw Error('The native camera catalog did not arrive.');
       const panel = nativePanel(metadata.body, initial.inputs, controls);
+      setScreens(otherScreens(metadata.body));
+      split = mainScreen(metadata.body);
       updateState((value) => {
         value.idle = false;
         value.panelVisible = true;
@@ -207,6 +229,19 @@ export default function App() {
         selectFile={() => {}}
         toolbar={<span />}
       >
+        <Show when={!state().idle && screens().length}>
+          <section class="screen-strip" aria-label="Other screens">
+            <For each={screens()}>{(screen) => (
+              <div class={["screen-tile", { live: !!screen.streamed && viewfinderLive() }]} style={{ 'aspect-ratio': screen.aspect }}>
+                <Show when={screen.streamed}>
+                  <canvas ref={(element) => { viewfinder = element; }} aria-label={screen.name} />
+                </Show>
+                <strong>{screen.name}</strong>
+                <span>{screen.status}</span>
+              </div>
+            )}</For>
+          </section>
+        </Show>
         <Show when={state().idle}>
           <section class="launcher" aria-labelledby="emulator-title">
             <Show when={bridge} fallback={<p class="status">{launcherError() || 'Start the emulator with a native session.'}</p>}>

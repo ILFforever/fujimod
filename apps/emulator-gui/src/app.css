@@ -65,34 +65,133 @@ select, .file-row { width: 100%; border: 1px solid #3a3a3c; border-radius: 10px;
 .launcher .launcher-check { display: flex; align-items: center; gap: 9px; color: #f2f2f7; font-size: 13px; cursor: pointer; }
 .launcher-check input { margin: 0; accent-color: #f2f2f7; }
 
-/* X-H2 hand panel: controls placed as on the body, from the owner's
-   manual "Parts of the Camera" diagram (pages 2-3). Dark boxes are the EVF,
-   rear LCD and top LCD, for orientation only. */
-.xh2-top, .xh2-rear, .xh2-front { display: grid; gap: 8px 6px; align-items: center; justify-items: center; }
+/* X-H2 hand panel. Controls sit as on the body (owner's manual,
+   "Parts of the Camera", pages 2-3), on a uniform grid of round keys.
+   A control the session doesn't offer yet stays in place as an outline key,
+   so the whole body is visible while wiring is incomplete. */
+.xh2-plate {
+  --xh2-key: 56px;
+  --xh2-gap: 10px;
+  --xh2-plate: #18191b;
+  --xh2-face: #2c2d30;
+  --xh2-face-low: #232427;
+  --xh2-ink: #ebe8e1;
+  --xh2-ink-off: #5d5f64;
+  --xh2-rule: #36373b;
+  --xh2-rec: #d42a2f;
+  display: grid;
+  grid-template-columns: repeat(4, var(--xh2-key));
+  gap: var(--xh2-gap);
+  justify-content: center;
+  align-items: center;
+  justify-items: center;
+  padding: 12px 14px 16px;
+  border-radius: 14px;
+  background: var(--xh2-plate);
+}
+.xh2-plate::before {
+  grid-column: 1 / -1;
+  justify-self: start;
+  font-size: 12px;
+  font-weight: 500;
+  color: #8b8d92;
+}
+.xh2-top::before { content: 'Top plate'; }
+.xh2-rear::before { content: 'Back'; }
+.xh2-front::before { content: 'Front'; }
+
+/* Round keys on an even grid: engraved light label on a dark face. */
+.xh2-plate .key-wrapper { border-radius: 50%; }
+.xh2-plate .key {
+  --d: var(--xh2-key);
+  border-radius: 50%;
+  background: linear-gradient(var(--xh2-face), var(--xh2-face-low));
+  box-shadow: 0 1px 0 #4a4b50 inset, 0 3px 8px rgba(0, 0, 0, 0.55);
+  color: var(--xh2-ink);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.xh2-plate .key .two { font-size: 10px; line-height: 1.15; }
+.xh2-plate .key-wrapper.active .key { background: #1f2022; box-shadow: inset 0 2px 5px #000a; }
+.xh2-plate .key-wrapper:focus-visible { outline: 2px solid var(--xh2-ink); outline-offset: 2px; }
+.xh2-plate .key.rec { box-shadow: 0 0 0 2px var(--xh2-rec) inset, 0 3px 8px rgba(0, 0, 0, 0.55); }
+
+/* Not wired yet: an outline of the key, label dimmed, no shadow. */
+.xh2-plate .key-wrapper:disabled { opacity: 1; }
+.xh2-plate .key-wrapper:disabled .key {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--xh2-rule);
+  color: var(--xh2-ink-off);
+}
+.xh2-plate .key-wrapper.rec:disabled .key { box-shadow: inset 0 0 0 1px #5a2a2c; }
+
+/* Wide controls span the row and clip (the mode dial slides its labels). */
+.a-mode, .a-front, .a-dial, .a-shutter { justify-self: stretch; min-width: 0; }
+.a-mode .dial { width: 100%; }
+/* Command dials: a full-row wheel, as wide as the mode dial. */
+.a-front .control-face, .a-dial .control-face { display: flex; width: 100%; }
+.a-front .control-face > :first-child, .a-dial .control-face > :first-child,
+.a-front .cmd, .a-dial .cmd { width: 100%; }
+.a-front .knurl, .a-dial .knurl { grid-template-columns: 1fr 96px 1fr; }
+
 .xh2-top {
-  grid-template-columns: 1.4fr 1fr 0.7fr 0.7fr 0.7fr;
   grid-template-areas:
-    "mode tlcd iso wb fn1"
-    "mode tlcd rec shutter shutter"
-    ". . front front front";
+    "head head head head"
+    "mode mode mode mode"
+    "iso wb fn1 rec"
+    "front front front front"
+    "shutter shutter shutter shutter";
 }
 .xh2-rear {
-  grid-template-columns: 0.7fr 0.7fr 1fr 0.8fr 1fr 0.8fr;
   grid-template-areas:
-    "drive play evf view light afon"
-    "lcd lcd lcd stick stick dial"
-    "lcd lcd lcd ael pad q"
-    "lcd lcd lcd . pad ."
-    "lcd lcd lcd . disp .";
+    "head head head head"
+    "drive play view light"
+    "afon ael q ."
+    "dial dial dial dial"
+    "stick stick pad pad"
+    ". . disp disp";
 }
-.xh2-front { grid-template-columns: repeat(4, 1fr); grid-template-areas: "fn2 fn3 lens bt"; }
-.xh2-blank { width: 100%; height: 100%; min-height: 28px; border-radius: 6px; background: #0c0c0e; box-shadow: inset 0 0 0 1px #2a2a2e; }
-.a-lcd { min-height: 150px; }
-.a-evf { min-height: 34px; }
-.a-tlcd { min-height: 60px; }
-.a-mode { grid-area: mode; } .a-tlcd { grid-area: tlcd; } .a-iso { grid-area: iso; } .a-wb { grid-area: wb; }
-.a-fn1 { grid-area: fn1; } .a-rec { grid-area: rec; } .a-shutter { grid-area: shutter; } .a-front { grid-area: front; justify-self: stretch; }
-.a-drive { grid-area: drive; } .a-play { grid-area: play; } .a-evf { grid-area: evf; } .a-view { grid-area: view; }
-.a-light { grid-area: light; } .a-afon { grid-area: afon; } .a-dial { grid-area: dial; justify-self: stretch; } .a-lcd { grid-area: lcd; }
+.xh2-front { grid-template-areas: "head head head head" "fn2 fn3 lens bt"; }
+.xh2-top::before, .xh2-rear::before, .xh2-front::before { grid-area: head; }
+.a-mode { grid-area: mode; } .a-iso { grid-area: iso; } .a-wb { grid-area: wb; }
+.a-fn1 { grid-area: fn1; } .a-rec { grid-area: rec; } .a-shutter { grid-area: shutter; } .a-front { grid-area: front; }
+.a-drive { grid-area: drive; } .a-play { grid-area: play; } .a-view { grid-area: view; }
+.a-light { grid-area: light; } .a-afon { grid-area: afon; } .a-dial { grid-area: dial; }
 .a-stick { grid-area: stick; } .a-ael { grid-area: ael; } .a-q { grid-area: q; } .a-pad { grid-area: pad; } .a-disp { grid-area: disp; }
 .a-fn2 { grid-area: fn2; } .a-fn3 { grid-area: fn3; } .a-lens { grid-area: lens; } .a-bt { grid-area: bt; }
+
+/* Other screens: a strip under the rear LCD, each tile in its screen's shape. */
+.stage:not(.idle):has(.screen-strip) #lcd-source.flat { height: calc(100% - var(--strip)); }
+.viewer { --strip: clamp(132px, 22vh, 220px); }
+.screen-strip {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: var(--strip);
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: stretch;
+  padding: 14px 20px 18px;
+  border-top: 1px solid #232326;
+  background: #0b0b0c;
+}
+.screen-tile {
+  min-width: 140px;
+  min-height: 100px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  border-radius: 8px;
+  background: #050506;
+  box-shadow: inset 0 0 0 1px #36373b;
+}
+.screen-tile strong { font-size: 13px; font-weight: 600; color: #a7a9ae; }
+.screen-tile span { font-size: 12px; color: #5d5f64; }
+.screen-tile { position: relative; overflow: hidden; }
+.screen-tile canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; display: none; }
+.screen-tile.live canvas { display: block; }
+.screen-tile.live strong, .screen-tile.live span { display: none; }

@@ -4,7 +4,7 @@
   "layout": [
     {
       "kind": "grid",
-      "className": "xh2-top",
+      "className": "xh2-plate xh2-top",
       "children": [
         {
           "kind": "control",
@@ -27,10 +27,6 @@
             "FILTER": "FILTER",
             "F": "F"
           }
-        },
-        {
-          "kind": "space",
-          "className": "a-tlcd xh2-blank"
         },
         {
           "kind": "control",
@@ -89,7 +85,7 @@
     },
     {
       "kind": "grid",
-      "className": "xh2-rear",
+      "className": "xh2-plate xh2-rear",
       "children": [
         {
           "kind": "control",
@@ -106,10 +102,6 @@
           "variant": "key",
           "className": "a-play",
           "icon": "playback"
-        },
-        {
-          "kind": "space",
-          "className": "a-evf xh2-blank"
         },
         {
           "kind": "control",
@@ -149,10 +141,6 @@
           }
         },
         {
-          "kind": "space",
-          "className": "a-lcd xh2-blank"
-        },
-        {
           "kind": "dpad",
           "className": "a-stick",
           "caption": "FOCUS",
@@ -160,7 +148,8 @@
             "up": "focus_stick.up",
             "down": "focus_stick.down",
             "left": "focus_stick.left",
-            "right": "focus_stick.right"
+            "right": "focus_stick.right",
+            "center": "focus_stick"
           }
         },
         {
@@ -194,7 +183,8 @@
             "left": "selector_left_button",
             "right": "selector_right_button",
             "center": "menu_ok_button"
-          }
+          },
+          "caption": "SELECTOR"
         },
         {
           "kind": "control",
@@ -213,7 +203,7 @@
     },
     {
       "kind": "grid",
-      "className": "xh2-front",
+      "className": "xh2-plate xh2-front",
       "children": [
         {
           "kind": "control",

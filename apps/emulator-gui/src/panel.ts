@@ -1,6 +1,6 @@
 import type { PhysicalControls } from 'fujimod';
 import type { ControlInput } from 'fujimod/emulator';
-import type { ControlNode, DevicePanel } from '@fujimod/emulator-ui/ui/layout';
+import type { DevicePanel } from '@fujimod/emulator-ui/ui/layout';
 import { defaultLayout } from '@fujimod/emulator-ui/ui/default-layout';
 import xh2 from './panels/xh2.json' with { type: 'json' };
 
@@ -13,41 +13,51 @@ function handPanel(body: string): DevicePanel | undefined {
   return BODY_PANELS[key] ?? Object.entries(BODY_PANELS).find(([id]) => key.startsWith(id))?.[1];
 }
 
-/**
- * Keep only what the session offers: a control whose input is missing, or a
- * cluster binding to a missing input, is dropped; layout boxes stay.
- */
-function prune(nodes: readonly ControlNode[], known: ReadonlySet<string>): ControlNode[] {
-  const kept: ControlNode[] = [];
-  for (const node of nodes) {
-    if (node.kind === 'control') {
-      if (node.id && known.has(node.id)) kept.push(node);
-      continue;
-    }
-    if (node.bindings) {
-      const bindings = Object.fromEntries(
-        Object.entries(node.bindings).filter(([, id]) => known.has(id)),
-      );
-      if (Object.keys(bindings).length === 0) continue;
-      kept.push({ ...node, bindings });
-      continue;
-    }
-    if (node.children) {
-      kept.push({ ...node, children: prune(node.children, known) });
-      continue;
-    }
-    kept.push(node);
-  }
-  return kept;
+/** A camera screen the window does not stream, shown as a tile under the LCD. */
+export interface OtherScreen {
+  name: string;
+  status: string;
+  /** CSS aspect ratio of the real screen. */
+  aspect: string;
+  /** Drawn by the camera through the main output at its own size. */
+  streamed?: boolean;
 }
 
-/** Build the shared panel from the native session's own input catalog. */
+/** Size of the main LCD image; frames at any other size are the viewfinder. */
+export interface MainScreen {
+  width: number;
+  height: number;
+}
+
+const MAIN_SCREENS: Record<string, MainScreen> = { xh2: { width: 900, height: 600 } };
+
+/** The body's main LCD size, used to route frames by size. */
+export function mainScreen(body: string): MainScreen | undefined {
+  const key = body.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return MAIN_SCREENS[key] ?? Object.entries(MAIN_SCREENS).find(([id]) => key.startsWith(id))?.[1];
+}
+
+const OTHER_SCREENS: Record<string, OtherScreen[]> = {
+  xh2: [
+    { name: 'Viewfinder', status: 'Off: press VIEW MODE', aspect: '4 / 3', streamed: true },
+    { name: 'Top LCD', status: 'Not emulated', aspect: '3 / 2' },
+  ],
+};
+
+/** The body's other screens (for `xh2`, also `x-h2`, `xh2-520`). */
+export function otherScreens(body: string): OtherScreen[] {
+  const key = body.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return OTHER_SCREENS[key] ?? Object.entries(OTHER_SCREENS).find(([id]) => key.startsWith(id))?.[1] ?? [];
+}
+
+/**
+ * Build the shared panel from the native session's own input catalog. A hand
+ * panel keeps every control: one the session does not offer renders disabled
+ * (greyed), so the full body layout stays visible while wiring is incomplete.
+ */
 export function nativePanel(body: string, inputs: ControlInput[], controls: PhysicalControls): DevicePanel {
   const arranged = handPanel(body) ?? handPanel(controls.body_id);
-  if (arranged) {
-    const known = new Set(inputs.map((input) => input.id));
-    return { ...arranged, body, layout: prune(arranged.layout, known) };
-  }
+  if (arranged) return { ...arranged, body };
   const layout = defaultLayout(inputs, controls);
   return { ...layout, body };
 }
