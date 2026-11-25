@@ -690,6 +690,10 @@ pub enum BlockDevice {
     },
     /// Preview channel.
     ImagingPreview {
+        /// Whether the +0x400 output fills statistics planes 0..3 with the four contrast filters
+        /// over the window of words +0x7c and +0x80, rather than full-frame colour sums.
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        focus_statistics: bool,
         /// Declared basis.
         basis: String,
     },
@@ -798,6 +802,11 @@ pub enum BlockDevice {
     },
     /// Video codec page.
     VideoCodec {
+        /// Declared basis.
+        basis: String,
+    },
+    /// Imaging input buffer whose +0x40 start completes with an interrupt.
+    ImagingBuffer {
         /// Declared basis.
         basis: String,
     },
@@ -1042,6 +1051,7 @@ impl BlockDevice {
                         | BlockDevice::ImagingRzl2 { .. }
                         | BlockDevice::ImagingResz { .. }
                         | BlockDevice::VideoCodec { .. }
+                        | BlockDevice::ImagingBuffer { .. }
                         | BlockDevice::ImagingDsp { .. }
                         | BlockDevice::Completion { .. }
                 )
