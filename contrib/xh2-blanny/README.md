@@ -29,6 +29,11 @@ What to take into `xh2-blanny`:
    - 0004 Playback: SD DMA to the declared DRAM limit, the JPEG encoder and
      decoder, and the X-T5's develop/playback stubs. 5.20 then opens a camera
      JPEG from the SD slot.
+   - 0005 Mode dial (13 positions on ADC 3), focus lever (ADC 14, eight
+     directions; push on GPIO 15.6, active low) and the dial pushes (GPIO
+     0.13 / 0.14, by the X-T5's wiring). It also maps `q_button` to the Quick
+     key, which 0003 needs on this base. The mode dial works in the emulator;
+     the lever reaches the decoder but does not move the menu cursor yet.
 
 Fast settings used for X-H2 testing: `FUJIMOD_SMAPH_CPU=1` and
 `FUJIMOD_COMPANION_TICK_DIVIDER=32`. A 16 s boot to REC takes 49 s instead of

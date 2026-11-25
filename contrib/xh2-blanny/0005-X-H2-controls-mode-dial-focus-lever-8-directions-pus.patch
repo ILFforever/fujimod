@@ -1,0 +1,280 @@
+From 0db4ba10750b844d12ad1de4c358aa5c1dc58a1f Mon Sep 17 00:00:00 2001
+From: ILFforever <hammymukura@gmail.com>
+Date: Thu, 26 Nov 2026 00:51:35 +0700
+Subject: [PATCH] X-H2 controls: mode dial, focus lever (8 directions + push)
+ and dial pushes
+
+From the 5.20 firmware and factory config read in the emulator:
+- mode dial: 13 positions on ADC 3 (config halfwords 14072..14122);
+  confirmed in the emulator (A and M show on the shooting screen);
+- focus lever: ADC 14 bands from table 0x1c38c20 (decoder 0x13ff900),
+  cardinals in the catalog, diagonals in the board table; push on GPIO 15.6
+  active low (gate 0x13ff8dc). The decoder sees directions; the menu cursor
+  does not move yet;
+- dial pushes on GPIO 0.13/0.14 by the X-T5's wiring (not confirmed);
+- q_button maps to the Quick key (the Q rung from the previous patch had
+  no emulator key on this base).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ catalog/bodies/xh2/body.json                  | 20 +++++
+ catalog/bodies/xh2/controls.json              | 69 ++++++++++++--
+ .../emulator-xp5-board/src/ladder_controls.rs | 90 +++++++++++++++++--
+ 3 files changed, 163 insertions(+), 16 deletions(-)
+
+diff --git a/catalog/bodies/xh2/body.json b/catalog/bodies/xh2/body.json
+index 1b4abed1..c97d640d 100644
+--- a/catalog/bodies/xh2/body.json
++++ b/catalog/bodies/xh2/body.json
+@@ -126,6 +126,26 @@
+           "active_level": false
+         }
+       ]
++    },
++    {
++      "id": "controls-adc-3",
++      "kind": "control",
++      "signals": [
++        {
++          "kind": "adc",
++          "channel": 3
++        }
++      ]
++    },
++    {
++      "id": "controls-adc-14",
++      "kind": "control",
++      "signals": [
++        {
++          "kind": "adc",
++          "channel": 14
++        }
++      ]
+     }
+   ],
+   "parts": [
+diff --git a/catalog/bodies/xh2/controls.json b/catalog/bodies/xh2/controls.json
+index 9618e4b7..595eab6b 100644
+--- a/catalog/bodies/xh2/controls.json
++++ b/catalog/bodies/xh2/controls.json
+@@ -148,7 +148,9 @@
+       "manual_page": 8,
+       "face": null,
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-3"
++      ],
+       "assignable": false,
+       "pushable": false,
+       "default_function": "Select a shooting mode.",
+@@ -574,7 +576,9 @@
+       "manual_page": 7,
+       "face": null,
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-14"
++      ],
+       "assignable": true,
+       "pushable": true,
+       "default_function": "Tilt to select the focus area or navigate menus; press the center for the configured focus-area action.",
+@@ -583,12 +587,23 @@
+       "behavior": {
+         "kind": "pad",
+         "directions": {
+-          "up": null,
+-          "down": null,
+-          "left": null,
+-          "right": null
+-        },
+-        "press": null
++          "up": {
++            "kind": "debug_key",
++            "name": "8DIR_U"
++          },
++          "down": {
++            "kind": "debug_key",
++            "name": "8DIR_D"
++          },
++          "left": {
++            "kind": "debug_key",
++            "name": "8DIR_L"
++          },
++          "right": {
++            "kind": "debug_key",
++            "name": "8DIR_R"
++          }
++        }
+       },
+       "positions": [],
+       "short_name": "FOCUS"
+@@ -1043,6 +1058,44 @@
+           "basis": "Band 3042..3719, derived from the firmware's factory key-band table (scanner row 32, physical code 0x16, UI event KEY_DOWN 3); no other control on this wire accepts it. The sample is the band midpoint."
+         }
+       ]
++    },
++    {
++      "wire": {
++        "kind": "adc",
++        "channel": 14
++      },
++      "levels": 4096,
++      "basis": "The focus-lever decoder 0x13ff900 (X-H2 5.20) reads this ADC channel through 0x139ef38(14) and compares it with eight band pairs from table 0x1c38c20. Bands come from the firmware's factory key-band table; a body with its own valid configuration store reads its own bands. No released level is established: it is this channel's idle sample, a property of the body.",
++      "rungs": [
++        {
++          "control_id": "focus_stick.up",
++          "band_low": 1448,
++          "band_high": 1688,
++          "sample": 1568,
++          "basis": "Band 1448..1688, read from the 5.20 factory configuration halfwords that focus-lever table 0x1c38c20 names (lever decoder 0x13ff900 compares ADC 14 against them; physical code 0x29, UI event 8DIR_U 59); no other control on this wire accepts it. The sample is the band midpoint."
++        },
++        {
++          "control_id": "focus_stick.right",
++          "band_low": 1930,
++          "band_high": 2219,
++          "sample": 2074,
++          "basis": "Band 1930..2219, read from the 5.20 factory configuration halfwords that focus-lever table 0x1c38c20 names (lever decoder 0x13ff900 compares ADC 14 against them; physical code 0x2b, UI event 8DIR_R 61); no other control on this wire accepts it. The sample is the band midpoint."
++        },
++        {
++          "control_id": "focus_stick.left",
++          "band_low": 2606,
++          "band_high": 3041,
++          "sample": 2823,
++          "basis": "Band 2606..3041, read from the 5.20 factory configuration halfwords that focus-lever table 0x1c38c20 names (lever decoder 0x13ff900 compares ADC 14 against them; physical code 0x2c, UI event 8DIR_L 65); no other control on this wire accepts it. The sample is the band midpoint."
++        },
++        {
++          "control_id": "focus_stick.down",
++          "band_low": 3042,
++          "band_high": 3719,
++          "sample": 3380,
++          "basis": "Band 3042..3719, read from the 5.20 factory configuration halfwords that focus-lever table 0x1c38c20 names (lever decoder 0x13ff900 compares ADC 14 against them; physical code 0x2a, UI event 8DIR_D 63); no other control on this wire accepts it. The sample is the band midpoint."
++        }
++      ]
+     }
+   ]
+ }
+diff --git a/crates/emulator-xp5-board/src/ladder_controls.rs b/crates/emulator-xp5-board/src/ladder_controls.rs
+index 7237ffb1..480ce323 100644
+--- a/crates/emulator-xp5-board/src/ladder_controls.rs
++++ b/crates/emulator-xp5-board/src/ladder_controls.rs
+@@ -25,7 +25,7 @@ use fujimod_emulator_parts_controls::{key_input::Key, ladder_keys};
+ 
+ /// Catalog control identities, including pad directions, and the emulator key
+ /// that presses each. A ladder rung on any other identity is refused.
+-const CONTROL_KEYS: [(&str, Key); 21] = [
++const CONTROL_KEYS: [(&str, Key); 22] = [
+     ("menu_ok_button", Key::Menu),
+     ("disp_back_bluetooth_button", Key::Back),
+     ("disp_back_button", Key::Back),
+@@ -39,6 +39,7 @@ const CONTROL_KEYS: [(&str, Key); 21] = [
+     ("fn1_button", Key::Fn1),
+     ("fn2_button", Key::Fn2),
+     ("quick_menu_button", Key::Quick),
++    ("q_button", Key::Quick),
+     ("focus_stick.up", Key::StickUp),
+     ("focus_stick.down", Key::StickDown),
+     ("focus_stick.left", Key::StickLeft),
+@@ -195,19 +196,92 @@ fn positions(entries: &[(&str, &[&str], u16, u16, bool)]) -> Vec<ladder_keys::Po
+ fn extension(body: &str, options: &mut ladder_keys::Options) -> Result<(), String> {
+     match body {
+         "xt5" => xt5_extension(options),
+-        "xh2" => {
+-            options.gpio_keys = vec![
++        "xh2" => xh2_extension(options),
++        _ => Ok(()),
++    }
++}
++
++const XH2_BANDS: &str = "X-H2 5.20 factory key-band table: configuration halfwords read through 0x148f2e8, \
++dumped in the emulator from configuration RAM 0x27008000 + offset. The sample is the band midpoint.";
++
++fn xh2_extension(options: &mut ladder_keys::Options) -> Result<(), String> {
++    let lever = options
++        .ladders
++        .iter_mut()
++        .find(|ladder| ladder.wire == ladder_keys::Wire::Adc { channel: 14 })
++        .ok_or("the X-H2 catalog ladders lack ADC 14")?;
++    // Focus-lever diagonals: table 0x1c38c20 rows for physical 0x2d..0x30
++    // (8DIR_R_U, 8DIR_R_D, 8DIR_L_U, 8DIR_L_D), decoder 0x13ff900.
++    let rung = |key, low, high| ladder_keys::Rung {
++        key,
++        band_low: low,
++        band_high: high,
++        sample: midpoint(low, high),
++        basis: XH2_BANDS.into(),
++    };
++    lever.rungs.extend([
++        rung(Key::StickUpRight, 100, 1230),
++        rung(Key::StickUpLeft, 1231, 1447),
++        rung(Key::StickDownRight, 1689, 1929),
++        rung(Key::StickDownLeft, 2220, 2605),
++    ]);
++    // Mode dial: scanner rows for physical 49..61 read ADC 3 against
++    // configuration halfwords 14072..14122 (UI MMOD_P .. FILTER).
++    options.dials = vec![ladder_keys::PositionDial {
++        name: "mode".into(),
++        aliases: vec![],
++        channel: 3,
++        positions: positions(&[
++            ("P", &[], 100, 462, false),
++            ("S", &[], 463, 768, false),
++            ("A", &[], 769, 1072, false),
++            ("M", &[], 1073, 1374, false),
++            ("C1", &[], 1375, 1677, false),
++            ("C2", &[], 1678, 1981, false),
++            ("C3", &[], 1982, 2289, false),
++            ("C4", &[], 2290, 2600, false),
++            ("C5", &[], 2601, 2918, false),
++            ("C6", &[], 2919, 3243, false),
++            ("C7", &[], 3244, 3576, false),
++            ("F", &["MOVIE"], 3577, 3921, false),
++            ("FILTER", &[], 3922, 4095, false),
++        ]),
++        basis: XH2_BANDS.into(),
++    }];
++    options.gpio_keys = vec![
+                 shutter_half(
+                     "0x1c52138: selector 0 (GPIO 0.0), released level 1, logical interrupt 1 (INTID 116); read helper 0x138331c.",
+                 ),
+                 shutter_full(
+                     "0x1c52160: selector 1 (GPIO 0.1), released level 1, logical interrupt 2 (INTID 117); read helper 0x138331c.",
+                 ),
+-            ];
+-            Ok(())
+-        }
+-        _ => Ok(()),
+-    }
++        ladder_keys::GpioKey {
++            key: Key::StickPush,
++            pin: Pin { port: 15, pin: 6 },
++            active_high: false,
++            basis: "X-H2 5.20 focus-lever decoder 0x13ff900 reads GPIO 15.6 through 0x13ff8dc \
++(0x1377524(0xf0006)); while it reads low the lever state machine 0x13ffa88 reports the push (state 5, \
++physical 0x28) and ignores directions. Pressed = low."
++                .into(),
++        },
++        ladder_keys::GpioKey {
++            key: Key::RearPush,
++            pin: Pin { port: 0, pin: 13 },
++            active_high: false,
++            basis: "X-H2 5.20 scanner row for physical 0x3f reads GPIO 0.13 low; rear dial push by the \
++X-T5's wiring of the same pad (not confirmed on an X-H2)."
++                .into(),
++        },
++        ladder_keys::GpioKey {
++            key: Key::FrontPush,
++            pin: Pin { port: 0, pin: 14 },
++            active_high: false,
++            basis: "X-H2 5.20 scanner row for physical 0x3e reads GPIO 0.14 low; front dial push by the \
++X-T5's wiring of the same pad (not confirmed on an X-H2)."
++                .into(),
++        },
++    ];
++    Ok(())
+ }
+ 
+ fn shutter_half(record: &str) -> ladder_keys::GpioKey {
+-- 
+2.54.0 (Apple Git-157)
+
