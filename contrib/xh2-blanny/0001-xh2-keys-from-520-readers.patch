@@ -1,0 +1,265 @@
+From 68911cb51e9ddd7caa738b5271b87d4e4ef99c7f Mon Sep 17 00:00:00 2001
+From: ILFforever <hammymukura@gmail.com>
+Date: Wed, 25 Nov 2026 15:41:34 +0700
+Subject: [PATCH] X-H2 controls: Q, PLAY, DRIVE, VIEW, Fn1 and Fn2 from the
+ 5.20 key readers
+
+- Q: a rung on the ADC 6 ladder, 3103..3776 (reader 0x13fe8b8, scanner row 27).
+- PLAY, DRIVE/delete, VIEW MODE: a new ADC 5 ladder (readers 0x13feac0,
+  0x13fea2c, 0x13fe998; rows 20-22), 3103..3776 / 2637..3102 / 2117..2344.
+- Fn1 / Fn2: GPIO 0.4 / 0.15, active low (scanner rows 4 and 5, FUNCTION and
+  FUNCTION2).
+
+The band words come from the factory key-band table read through 0x148f2e8,
+checked against the existing MENU/OK and DISP/BACK rungs. Verified on the 5.20
+board under the merged emulator: Q opens the Quick Menu and PLAY opens
+playback. Written against the xh2-blanny branch's ADC 6 ladder.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ catalog/bodies/xh2/body.json     | 34 ++++++++++++
+ catalog/bodies/xh2/controls.json | 92 +++++++++++++++++++++++++++-----
+ 2 files changed, 114 insertions(+), 12 deletions(-)
+
+diff --git a/catalog/bodies/xh2/body.json b/catalog/bodies/xh2/body.json
+index fd57a2ab..1b4abed1 100644
+--- a/catalog/bodies/xh2/body.json
++++ b/catalog/bodies/xh2/body.json
+@@ -71,6 +71,16 @@
+         }
+       ]
+     },
++    {
++      "id": "controls-adc-5",
++      "kind": "control",
++      "signals": [
++        {
++          "kind": "adc",
++          "channel": 5
++        }
++      ]
++    },
+     {
+       "id": "controls-adc-6",
+       "kind": "control",
+@@ -92,6 +102,30 @@
+           "threshold": null
+         }
+       ]
++    },
++    {
++      "id": "controls-gpio-0-4",
++      "kind": "control",
++      "signals": [
++        {
++          "kind": "gpio",
++          "port": 0,
++          "pin": 4,
++          "active_level": false
++        }
++      ]
++    },
++    {
++      "id": "controls-gpio-0-15",
++      "kind": "control",
++      "signals": [
++        {
++          "kind": "gpio",
++          "port": 0,
++          "pin": 15,
++          "active_level": false
++        }
++      ]
+     }
+   ],
+   "parts": [
+diff --git a/catalog/bodies/xh2/controls.json b/catalog/bodies/xh2/controls.json
+index 4c7eae2f..9618e4b7 100644
+--- a/catalog/bodies/xh2/controls.json
++++ b/catalog/bodies/xh2/controls.json
+@@ -106,7 +106,9 @@
+       "manual_page": 298,
+       "face": "Fn1",
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-gpio-0-4"
++      ],
+       "assignable": true,
+       "pushable": true,
+       "default_function": "FACE DETECTION ON/OFF.",
+@@ -114,7 +116,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "FUNCTION"
++        }
+       },
+       "positions": []
+     },
+@@ -421,7 +426,9 @@
+       "manual_page": 298,
+       "face": "Fn2",
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-gpio-0-15"
++      ],
+       "assignable": true,
+       "pushable": true,
+       "default_function": "ELECTRONIC LEVEL SWITCH.",
+@@ -429,7 +436,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "FUNCTION2"
++        }
+       },
+       "positions": []
+     },
+@@ -476,7 +486,9 @@
+       "manual_page": 9,
+       "face": "DRIVE",
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-5"
++      ],
+       "assignable": false,
+       "pushable": true,
+       "default_function": "Display the drive-mode menu during shooting; delete pictures during playback.",
+@@ -484,7 +496,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "DRIVE"
++        }
+       },
+       "positions": []
+     },
+@@ -494,7 +509,9 @@
+       "manual_page": 59,
+       "face": null,
+       "icon": "playback",
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-5"
++      ],
+       "assignable": false,
+       "pushable": true,
+       "default_function": "View pictures.",
+@@ -502,7 +519,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "K_PLAY"
++        }
+       },
+       "positions": []
+     },
+@@ -512,7 +532,9 @@
+       "manual_page": 298,
+       "face": "VIEW/MODE",
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-5"
++      ],
+       "assignable": true,
+       "pushable": true,
+       "default_function": "VIEW MODE SETTING.",
+@@ -520,7 +542,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "VIEW"
++        }
+       },
+       "positions": []
+     },
+@@ -784,7 +809,9 @@
+       "manual_page": 297,
+       "face": "Q",
+       "icon": null,
+-      "connection_ids": [],
++      "connection_ids": [
++        "controls-adc-6"
++      ],
+       "assignable": true,
+       "pushable": true,
+       "default_function": "QUICK MENU.",
+@@ -792,7 +819,10 @@
+       "mechanical": false,
+       "behavior": {
+         "kind": "button",
+-        "press": null
++        "press": {
++          "kind": "debug_key",
++          "name": "K_Q"
++        }
+       },
+       "positions": []
+     },
+@@ -934,6 +964,44 @@
+           "band_high": 3102,
+           "sample": 2869,
+           "basis": "Band 2637..3102, derived from the firmware's factory key-band table (scanner row 28, physical code 0xf, UI event KEY_DISP_BACK 9); no other control on this wire accepts it. The sample is the band midpoint."
++        },
++        {
++          "control_id": "q_button",
++          "band_low": 3103,
++          "band_high": 3776,
++          "sample": 3439,
++          "basis": "Band 3103..3776, derived from the X-H2 5.20 firmware's factory key-band table (scanner row 27, physical code 0x11, UI event K_Q 44); its reader 0x13fe8b8 also accepts 2345..2636, which the DISP/BACK reader 0x13fe824 accepts too (the Q + DISP/BACK chord), so only the Q-only band is declared. The sample is the band midpoint."
++        }
++      ]
++    },
++    {
++      "wire": {
++        "kind": "adc",
++        "channel": 5
++      },
++      "levels": 4096,
++      "basis": "The X-H2 5.20 key readers 0x13feac0 (PLAY), 0x13fea2c (DRIVE) and 0x13fe998 (VIEW) compare the cached ADC channel 5 sample (0x2059ee2, the channel 6 cache 0x2059ee4 minus 2) with the factory key-band table words 0x36c8..0x36ea, read through 0x148f2e8. The bands repeat the channel 6 ladder's: 0..782, 783..1711, 1712..1893, 1894..2116, 2117..2344, 2345..2636, 2637..3102, 3103..3776, 3777..4095 (no key). Values read from emulated configuration RAM 0x2700b6c8 of a 5.20 boot. No released level is established; the board's ADC input sample for this channel is 4095.",
++      "rungs": [
++        {
++          "control_id": "playback_button",
++          "band_low": 3103,
++          "band_high": 3776,
++          "sample": 3439,
++          "basis": "Band 3103..3776, derived from the X-H2 5.20 firmware's factory key-band table (scanner row 20, physical code 0xe, UI event K_PLAY 10); its reader also accepts 2345..2636, which the DRIVE reader accepts too (the PLAY + DRIVE chord), so only the PLAY-only band is declared. The sample is the band midpoint."
++        },
++        {
++          "control_id": "drive_delete_button",
++          "band_low": 2637,
++          "band_high": 3102,
++          "sample": 2869,
++          "basis": "Band 2637..3102, derived from the X-H2 5.20 firmware's factory key-band table (scanner row 21, physical code 0x10, UI event DRIVE 18); no other control's first band is this one. The sample is the band midpoint."
++        },
++        {
++          "control_id": "view_mode_button",
++          "band_low": 2117,
++          "band_high": 2344,
++          "sample": 2230,
++          "basis": "Band 2117..2344, derived from the X-H2 5.20 firmware's factory key-band table (scanner row 22, physical code 0x1c, UI event VIEW 8250); its reader also accepts 1894..2116, whose other user is not established, so only the first band is declared. The sample is the band midpoint."
+         }
+       ]
+     },
+-- 
+2.54.0 (Apple Git-157)
+
