@@ -657,6 +657,10 @@ pub(crate) fn open_from(
         // Reset state: the interrupt controller and CPU interfaces start unprogrammed.
         let mut profile = firmware_profile.clone();
         let setup_start = rom.is_some_and(|rom| matches!(rom.entry, Entry::SetupHandoff(_)));
+        // LOCAL BRING-UP FIX (not upstream): the card handoff parks the other cores the same way
+        // (card design: the loader holds them with their interrupt state set), so they get the
+        // parked interrupt state too. Without it an SGI cannot be taken on them.
+        let parked_start = rom.is_some_and(|rom| matches!(rom.entry, Entry::SetupHandoff(_) | Entry::CardHandoff(_)));
         profile.gic_initial = None;
         // The parked cores' redistributors are awake (the profile's WAKER words for cores other
         // than 0): the SGI that starts the reset stage's workers cannot reach a sleeping one, and
@@ -665,7 +669,7 @@ pub(crate) fn open_from(
         profile.gic_redistributor_initial = profile
             .gic_redistributor_initial
             .take()
-            .filter(|_| setup_start)
+            .filter(|_| parked_start)
             .map(|words| {
                 let mut kept: Vec<_> = words.into_iter().filter(|word| word.core != 0).collect();
                 // SGI 0 enabled in each parked core's SGI frame (ISENABLER0 at +0x10100), the
@@ -688,7 +692,7 @@ pub(crate) fn open_from(
             // the SGI that wakes it if its CPU interface is enabled. The stage never enables it,
             // so the uncaptured boot ROM must have. INFERRED: the values are the ones the loader
             // hand-off profile carries (priority mask 0xff, both groups enabled).
-            let parked = setup_start && cpu.id != 0;
+            let parked = parked_start && cpu.id != 0;
             cpu.sysregs.icc_pmr_el1 = if parked { 0xff } else { 0 };
             cpu.sysregs.icc_igrpen0_el1 = u32::from(parked).into();
             cpu.sysregs.icc_igrpen1_el1 = u32::from(parked).into();
@@ -726,7 +730,13 @@ pub(crate) fn open_from(
                         (Register::Pstate, rom_start::ROM_PSTATE),
                         (Register::Sp, handoff.sp),
                     ];
-                    start.released = primary;
+                    // LOCAL BRING-UP FIX (not upstream): the card start released only core 0, so cores 1-3
+                    // sat held at the handoff PC forever and the reset stage's SGI could never reach them.
+                    // Release them as the setup handoff does; they park in the stage trampoline.
+                    start.released = true;
+                    // LOCAL BRING-UP FIX (not upstream): the held secondaries park like the boot ROM's
+                    // wait, so an SGI releases them (see mod.rs push_pins).
+                    start.parked_until_sgi = !primary;
                     primary = false;
                 }
                 Entry::SetupHandoff(handoff) => {

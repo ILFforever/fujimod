@@ -3166,6 +3166,10 @@ impl State {
                 if self.parked_until_sgi[core] && g.gic.sgi_pending(core)? {
                     self.parked_until_sgi[core] = false;
                     self.waiting[core] = false;
+                    // LOCAL BRING-UP FIX (not upstream): the boot ROM's wait branches the woken core to
+                    // physical 0 (README: "branches them to physical 0 on the wake"). Pending SGIs are
+                    // not cleared here: the GIC model has no per-SGI clear call (gap noted).
+                    cpus[core].write_register(Register::Pc, &0u64.to_le_bytes())?;
                     changed = true;
                 }
                 if pins.0 || pins.1 {

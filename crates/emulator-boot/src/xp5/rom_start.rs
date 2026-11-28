@@ -134,6 +134,9 @@ impl Handoff {
             "xh2-530" => Some(toml::from_str(include_str!(
                 "../../../../catalog/firmware/xh2/5.30/xp5-boot/card-handoff.toml"
             )).map_err(|error| format!("card-handoff.toml: {error}"))),
+            "xh2-533" => Some(toml::from_str(include_str!(
+                "../../../../catalog/firmware/xh2/5.33/xp5-boot/card-handoff.toml"
+            )).map_err(|error| format!("card-handoff.toml: {error}"))),
             _ => None,
         }
     }
